@@ -8,17 +8,17 @@
 
 output "vpn_endpoint_id" {
   description = "ID of the AWS Client VPN endpoint"
-  value       = aws_ec2_client_vpn_endpoint.this.id
+  value       = var.create ? aws_ec2_client_vpn_endpoint.this[0].id : null
 }
 
 output "vpn_endpoint_arn" {
   description = "ARN of the AWS Client VPN endpoint"
-  value       = aws_ec2_client_vpn_endpoint.this.arn
+  value       = var.create ? aws_ec2_client_vpn_endpoint.this[0].arn : null
 }
 
 output "vpn_endpoint_dns_name" {
   description = "DNS name of the VPN endpoint for client configuration"
-  value       = aws_ec2_client_vpn_endpoint.this.dns_name
+  value       = var.create ? aws_ec2_client_vpn_endpoint.this[0].dns_name : null
 }
 
 output "vpn_name" {
@@ -74,12 +74,12 @@ output "cloudwatch_log_group_arn" {
 
 output "client_cidr_block" {
   description = "CIDR block assigned to VPN clients"
-  value       = aws_ec2_client_vpn_endpoint.this.client_cidr_block
+  value       = var.create ? aws_ec2_client_vpn_endpoint.this[0].client_cidr_block : null
 }
 
 output "transport_protocol" {
   description = "Transport protocol used by VPN endpoint"
-  value       = aws_ec2_client_vpn_endpoint.this.transport_protocol
+  value       = var.create ? aws_ec2_client_vpn_endpoint.this[0].transport_protocol : null
 }
 
 output "vpn_port" {
@@ -89,7 +89,7 @@ output "vpn_port" {
 
 output "split_tunnel_enabled" {
   description = "Whether split tunneling is enabled"
-  value       = aws_ec2_client_vpn_endpoint.this.split_tunnel
+  value       = var.create ? aws_ec2_client_vpn_endpoint.this[0].split_tunnel : null
 }
 
 # ------------------------------------------------------------------------------
@@ -99,13 +99,13 @@ output "split_tunnel_enabled" {
 output "summary" {
   description = "Summary of VPN endpoint configuration"
   value = {
-    vpn_endpoint_id       = aws_ec2_client_vpn_endpoint.this.id
-    vpn_endpoint_dns_name = aws_ec2_client_vpn_endpoint.this.dns_name
+    vpn_endpoint_id       = var.create ? aws_ec2_client_vpn_endpoint.this[0].id : null
+    vpn_endpoint_dns_name = var.create ? aws_ec2_client_vpn_endpoint.this[0].dns_name : null
     vpn_name              = local.vpn_name
-    client_cidr_block     = aws_ec2_client_vpn_endpoint.this.client_cidr_block
-    transport_protocol    = aws_ec2_client_vpn_endpoint.this.transport_protocol
+    client_cidr_block     = var.create ? aws_ec2_client_vpn_endpoint.this[0].client_cidr_block : null
+    transport_protocol    = var.create ? aws_ec2_client_vpn_endpoint.this[0].transport_protocol : null
     vpn_port              = local.vpn_port
-    split_tunnel          = aws_ec2_client_vpn_endpoint.this.split_tunnel
+    split_tunnel          = var.create ? aws_ec2_client_vpn_endpoint.this[0].split_tunnel : null
     authentication_type   = var.authentication_type
     network_associations  = length(aws_ec2_client_vpn_network_association.this)
     logging_enabled       = var.enable_connection_logs

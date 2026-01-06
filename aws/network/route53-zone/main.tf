@@ -9,6 +9,8 @@
 # ------------------------------------------------------------------------------
 
 resource "aws_route53_zone" "this" {
+  count = var.create ? 1 : 0
+
   name              = local.zone_name
   comment           = local.auto_comment
   delegation_set_id = var.delegation_set_id
@@ -63,7 +65,7 @@ resource "aws_route53_zone_association" "additional" {
     if var.zone_type == "private"
   }
 
-  zone_id    = aws_route53_zone.this.zone_id
+  zone_id    = aws_route53_zone.this[0].zone_id
   vpc_id     = each.value.vpc_id
   vpc_region = coalesce(each.value.vpc_region, var.region)
 }
@@ -73,15 +75,15 @@ resource "aws_route53_zone_association" "additional" {
 # ------------------------------------------------------------------------------
 
 resource "aws_route53_hosted_zone_dnssec" "this" {
-  count = var.enable_dnssec && var.zone_type == "public" ? 1 : 0
+  count = var.create && var.enable_dnssec ? 1 : 0 && var.zone_type == "public" ? 1 : 0
 
-  hosted_zone_id = aws_route53_zone.this.zone_id
+  hosted_zone_id = aws_route53_zone.this[0].zone_id
 }
 
 resource "aws_route53_key_signing_key" "this" {
-  count = var.enable_dnssec && var.zone_type == "public" ? 1 : 0
+  count = var.create && var.enable_dnssec ? 1 : 0 && var.zone_type == "public" ? 1 : 0
 
-  hosted_zone_id             = aws_route53_zone.this.zone_id
+  hosted_zone_id             = aws_route53_zone.this[0].zone_id
   key_management_service_arn = var.kms_key_id
   name                       = replace(var.domain_name, ".", "-")
 
@@ -93,8 +95,8 @@ resource "aws_route53_key_signing_key" "this" {
 # ------------------------------------------------------------------------------
 
 resource "aws_route53_query_log" "this" {
-  count = var.enable_query_logging ? 1 : 0
+  count = var.create && var.enable_query_logging ? 1 : 0 ? 1 : 0
 
-  zone_id                  = aws_route53_zone.this.zone_id
+  zone_id                  = aws_route53_zone.this[0].zone_id
   cloudwatch_log_group_arn = var.query_log_group_arn
 }

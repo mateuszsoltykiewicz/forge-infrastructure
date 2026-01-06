@@ -1,4 +1,15 @@
 # ==============================================================================
+# Resource Creation Control
+# ==============================================================================
+
+variable "create" {
+  description = "Whether to create resources. Set to false to skip resource creation."
+  type        = bool
+  default     = true
+}
+
+
+# ==============================================================================
 # VPC Endpoint Module - Variables
 # ==============================================================================
 # This file defines input variables for the VPC endpoint module.

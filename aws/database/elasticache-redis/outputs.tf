@@ -10,7 +10,7 @@
 
 output "replication_group_id" {
   description = "The ID of the ElastiCache replication group (multi-tenant aware)"
-  value       = aws_elasticache_replication_group.main.id
+  value       = var.create ? aws_elasticache_replication_group.main[0].id : null
 }
 
 output "customer_name" {
@@ -29,22 +29,22 @@ output "project_name" {
 
 output "replication_group_arn" {
   description = "The ARN of the ElastiCache replication group"
-  value       = aws_elasticache_replication_group.main.arn
+  value       = var.create ? aws_elasticache_replication_group.main[0].arn : null
 }
 
 output "replication_group_primary_endpoint_address" {
   description = "The address of the primary endpoint"
-  value       = aws_elasticache_replication_group.main.primary_endpoint_address
+  value       = var.create ? aws_elasticache_replication_group.main[0].primary_endpoint_address : null
 }
 
 output "replication_group_reader_endpoint_address" {
   description = "The address of the reader endpoint (Multi-AZ only)"
-  value       = try(aws_elasticache_replication_group.main.reader_endpoint_address, "")
+  value       = try(var.create ? aws_elasticache_replication_group.main[0].reader_endpoint_address : null, "")
 }
 
 output "replication_group_member_clusters" {
   description = "The member clusters of the replication group"
-  value       = aws_elasticache_replication_group.main.member_clusters
+  value       = var.create ? aws_elasticache_replication_group.main[0].member_clusters : null
 }
 
 # ------------------------------------------------------------------------------
@@ -58,7 +58,7 @@ output "port" {
 
 output "engine_version" {
   description = "The running version of the Redis engine"
-  value       = aws_elasticache_replication_group.main.engine_version_actual
+  value       = var.create ? aws_elasticache_replication_group.main[0].engine_version_actual : null
 }
 
 # ------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ output "engine_version" {
 
 output "subnet_group_name" {
   description = "The name of the cache subnet group"
-  value       = aws_elasticache_subnet_group.main.name
+  value       = var.create ? aws_elasticache_subnet_group.main[0].name : null
 }
 
 output "security_group_ids" {
@@ -81,7 +81,7 @@ output "security_group_ids" {
 
 output "ssm_parameter_primary_endpoint" {
   description = "SSM parameter name for Redis primary endpoint"
-  value       = aws_ssm_parameter.redis_primary_endpoint.name
+  value       = var.create ? aws_ssm_parameter.redis_primary_endpoint[0].name : null
 }
 
 output "ssm_parameter_reader_endpoint" {
@@ -91,7 +91,7 @@ output "ssm_parameter_reader_endpoint" {
 
 output "ssm_parameter_port" {
   description = "SSM parameter name for Redis port"
-  value       = aws_ssm_parameter.redis_port.name
+  value       = var.create ? aws_ssm_parameter.redis_port[0].name : null
 }
 
 output "ssm_parameter_auth_token" {
@@ -120,7 +120,7 @@ output "parameter_group_arn" {
 
 output "redis_cli_command" {
   description = "Command to connect using redis-cli (requires AUTH token from SSM)"
-  value       = var.auth_token_enabled ? "redis-cli -h ${aws_elasticache_replication_group.main.primary_endpoint_address} -p ${var.port} --tls -a $(aws ssm get-parameter --name ${aws_ssm_parameter.redis_auth_token[0].name} --with-decryption --query Parameter.Value --output text)" : "redis-cli -h ${aws_elasticache_replication_group.main.primary_endpoint_address} -p ${var.port} --tls"
+  value       = var.auth_token_enabled ? "redis-cli -h ${var.create ? aws_elasticache_replication_group.main[0].primary_endpoint_address : null} -p ${var.port} --tls -a $(aws ssm get-parameter --name ${aws_ssm_parameter.redis_auth_token[0].name} --with-decryption --query Parameter.Value --output text)" : "redis-cli -h ${var.create ? aws_elasticache_replication_group.main[0].primary_endpoint_address : null} -p ${var.port} --tls"
   sensitive   = true
 }
 

@@ -136,7 +136,7 @@ resource "aws_cloudwatch_metric_alarm" "high_target_5xx" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this.arn_suffix
+    LoadBalancer = aws_lb.this[0].arn_suffix
   }
 
   tags = local.all_tags
@@ -156,7 +156,7 @@ resource "aws_cloudwatch_metric_alarm" "high_alb_5xx" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this.arn_suffix
+    LoadBalancer = aws_lb.this[0].arn_suffix
   }
 
   tags = local.all_tags
@@ -176,7 +176,7 @@ resource "aws_cloudwatch_metric_alarm" "high_response_time" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this.arn_suffix
+    LoadBalancer = aws_lb.this[0].arn_suffix
   }
 
   tags = local.all_tags
@@ -196,7 +196,7 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_targets" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this.arn_suffix
+    LoadBalancer = aws_lb.this[0].arn_suffix
   }
 
   tags = local.all_tags
@@ -216,7 +216,7 @@ resource "aws_cloudwatch_metric_alarm" "no_healthy_targets" {
   treat_missing_data  = "breaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this.arn_suffix
+    LoadBalancer = aws_lb.this[0].arn_suffix
   }
 
   tags = local.all_tags
@@ -236,7 +236,7 @@ resource "aws_cloudwatch_metric_alarm" "high_tls_errors" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this.arn_suffix
+    LoadBalancer = aws_lb.this[0].arn_suffix
   }
 
   tags = local.all_tags

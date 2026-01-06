@@ -7,12 +7,12 @@
 # ------------------------------------------------------------------------------
 
 output "vpc_id" {
-  value       = aws_vpc.this.id
+  value       = var.create ? aws_vpc.this[0].id : null
   description = "The ID of the created VPC."
 }
 
 output "vpc_arn" {
-  value       = aws_vpc.this.arn
+  value       = var.create ? aws_vpc.this[0].arn : null
   description = "The Amazon Resource Name (ARN) of the created VPC."
 }
 
@@ -60,12 +60,12 @@ output "project_name" {
 # ------------------------------------------------------------------------------
 
 output "enable_dns_support" {
-  value       = aws_vpc.this.enable_dns_support
+  value       = var.create ? aws_vpc.this[0].enable_dns_support : null
   description = "Whether DNS resolution is enabled in the VPC."
 }
 
 output "enable_dns_hostnames" {
-  value       = aws_vpc.this.enable_dns_hostnames
+  value       = var.create ? aws_vpc.this[0].enable_dns_hostnames : null
   description = "Whether DNS hostnames are enabled in the VPC."
 }
 

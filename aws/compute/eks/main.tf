@@ -24,6 +24,8 @@ data "aws_partition" "current" {}
 # ------------------------------------------------------------------------------
 
 resource "aws_kms_key" "eks" {
+  count = var.create ? 1 : 0
+
   description             = "EKS cluster ${local.cluster_name} encryption key"
   deletion_window_in_days = var.kms_deletion_window_in_days
   enable_key_rotation     = var.enable_kms_key_rotation
@@ -38,8 +40,10 @@ resource "aws_kms_key" "eks" {
 }
 
 resource "aws_kms_alias" "eks" {
+  count = var.create ? 1 : 0
+
   name          = "alias/${local.cluster_name}-eks"
-  target_key_id = aws_kms_key.eks.key_id
+  target_key_id = aws_kms_key.eks[0].key_id
 }
 
 # ------------------------------------------------------------------------------
@@ -47,6 +51,8 @@ resource "aws_kms_alias" "eks" {
 # ------------------------------------------------------------------------------
 
 module "eks" {
+  create = var.create
+
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 21.0" # Updated to support AWS provider >= 6.0
 
@@ -66,13 +72,13 @@ module "eks" {
   # Encryption Configuration
   encryption_config = {
     resources        = ["secrets"]
-    provider_key_arn = aws_kms_key.eks.arn
+    provider_key_arn = var.create ? aws_kms_key.eks[0].arn : null
   }
 
   # CloudWatch Logging
   enabled_log_types                      = var.cluster_enabled_log_types
   cloudwatch_log_group_retention_in_days = var.cloudwatch_log_group_retention_in_days
-  cloudwatch_log_group_kms_key_id        = aws_kms_key.eks.arn
+  cloudwatch_log_group_kms_key_id        = var.create ? aws_kms_key.eks[0].arn : null
 
   # IRSA (IAM Roles for Service Accounts)
   enable_irsa = true
@@ -201,7 +207,7 @@ module "eks" {
             iops                  = var.system_node_group_disk_iops
             throughput            = var.system_node_group_disk_throughput
             encrypted             = true
-            kms_key_id            = aws_kms_key.eks.arn
+            kms_key_id            = var.create ? aws_kms_key.eks[0].arn : null
             delete_on_termination = true
           }
         }

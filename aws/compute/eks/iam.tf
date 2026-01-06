@@ -106,7 +106,7 @@ resource "aws_iam_policy" "ebs_csi_kms" {
           "kms:ListGrants",
           "kms:RevokeGrant"
         ]
-        Resource = [aws_kms_key.eks.arn]
+        Resource = [aws_kms_key.eks[0].arn]
         Condition = {
           Bool = {
             "kms:GrantIsForAWSResource" = "true"
@@ -122,7 +122,7 @@ resource "aws_iam_policy" "ebs_csi_kms" {
           "kms:GenerateDataKey*",
           "kms:DescribeKey"
         ]
-        Resource = [aws_kms_key.eks.arn]
+        Resource = [aws_kms_key.eks[0].arn]
       }
     ]
   })

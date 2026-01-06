@@ -10,17 +10,17 @@
 
 output "internet_gateway_id" {
   description = "ID of the Internet Gateway"
-  value       = aws_internet_gateway.this.id
+  value       = var.create ? aws_internet_gateway.this[0].id : null
 }
 
 output "internet_gateway_arn" {
   description = "ARN of the Internet Gateway"
-  value       = aws_internet_gateway.this.arn
+  value       = var.create ? aws_internet_gateway.this[0].arn : null
 }
 
 output "vpc_id" {
   description = "VPC ID that the Internet Gateway is attached to"
-  value       = aws_internet_gateway.this.vpc_id
+  value       = var.create ? aws_internet_gateway.this[0].vpc_id : null
 }
 
 # ------------------------------------------------------------------------------
@@ -63,7 +63,7 @@ output "architecture_type" {
 output "internet_gateway_summary" {
   description = "Summary of Internet Gateway configuration"
   value = {
-    igw_id                = aws_internet_gateway.this.id
+    igw_id                = var.create ? aws_internet_gateway.this[0].id : null
     igw_name              = local.igw_name
     vpc_id                = var.vpc_id
     vpc_name              = var.vpc_name

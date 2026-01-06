@@ -10,17 +10,17 @@
 
 output "zone_id" {
   description = "ID of the Route 53 hosted zone"
-  value       = aws_route53_zone.this.zone_id
+  value       = var.create ? aws_route53_zone.this[0].zone_id : null
 }
 
 output "zone_arn" {
   description = "ARN of the Route 53 hosted zone"
-  value       = aws_route53_zone.this.arn
+  value       = var.create ? aws_route53_zone.this[0].arn : null
 }
 
 output "zone_name" {
   description = "Name of the hosted zone (domain name)"
-  value       = aws_route53_zone.this.name
+  value       = var.create ? aws_route53_zone.this[0].name : null
 }
 
 # ------------------------------------------------------------------------------
@@ -29,12 +29,12 @@ output "zone_name" {
 
 output "name_servers" {
   description = "List of name servers for the hosted zone"
-  value       = aws_route53_zone.this.name_servers
+  value       = var.create ? aws_route53_zone.this[0].name_servers : null
 }
 
 output "primary_name_server" {
   description = "Primary name server for the hosted zone"
-  value       = aws_route53_zone.this.primary_name_server
+  value       = var.create ? aws_route53_zone.this[0].primary_name_server : null
 }
 
 # ------------------------------------------------------------------------------
@@ -48,7 +48,7 @@ output "zone_type" {
 
 output "comment" {
   description = "Comment for the hosted zone"
-  value       = aws_route53_zone.this.comment
+  value       = var.create ? aws_route53_zone.this[0].comment : null
 }
 
 # ------------------------------------------------------------------------------
@@ -139,12 +139,12 @@ output "query_log_group_arn" {
 output "summary" {
   description = "Summary of Route 53 hosted zone configuration"
   value = {
-    zone_id               = aws_route53_zone.this.zone_id
-    zone_arn              = aws_route53_zone.this.arn
-    zone_name             = aws_route53_zone.this.name
+    zone_id               = var.create ? aws_route53_zone.this[0].zone_id : null
+    zone_arn              = var.create ? aws_route53_zone.this[0].arn : null
+    zone_name             = var.create ? aws_route53_zone.this[0].name : null
     zone_type             = var.zone_type
-    name_servers          = aws_route53_zone.this.name_servers
-    primary_name_server   = aws_route53_zone.this.primary_name_server
+    name_servers          = var.create ? aws_route53_zone.this[0].name_servers : null
+    primary_name_server   = var.create ? aws_route53_zone.this[0].primary_name_server : null
     vpc_id                = var.zone_type == "private" ? var.vpc_id : null
     vpc_association_count = var.zone_type == "private" ? (1 + length(aws_route53_zone_association.additional)) : 0
     dnssec_enabled        = var.enable_dnssec

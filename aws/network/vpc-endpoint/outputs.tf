@@ -10,12 +10,12 @@
 
 output "endpoint_id" {
   description = "ID of the VPC endpoint"
-  value       = aws_vpc_endpoint.this.id
+  value       = var.create ? aws_vpc_endpoint.this[0].id : null
 }
 
 output "endpoint_arn" {
   description = "ARN of the VPC endpoint"
-  value       = aws_vpc_endpoint.this.arn
+  value       = var.create ? aws_vpc_endpoint.this[0].arn : null
 }
 
 output "endpoint_name" {
@@ -29,22 +29,22 @@ output "endpoint_name" {
 
 output "service_name" {
   description = "Full service name of the endpoint"
-  value       = aws_vpc_endpoint.this.service_name
+  value       = var.create ? aws_vpc_endpoint.this[0].service_name : null
 }
 
 output "endpoint_type" {
   description = "Type of VPC endpoint"
-  value       = aws_vpc_endpoint.this.vpc_endpoint_type
+  value       = var.create ? aws_vpc_endpoint.this[0].vpc_endpoint_type : null
 }
 
 output "state" {
   description = "State of the VPC endpoint"
-  value       = aws_vpc_endpoint.this.state
+  value       = var.create ? aws_vpc_endpoint.this[0].state : null
 }
 
 output "vpc_id" {
   description = "ID of the VPC the endpoint belongs to"
-  value       = aws_vpc_endpoint.this.vpc_id
+  value       = var.create ? aws_vpc_endpoint.this[0].vpc_id : null
 }
 
 # ------------------------------------------------------------------------------
@@ -53,12 +53,12 @@ output "vpc_id" {
 
 output "network_interface_ids" {
   description = "List of network interface IDs (Interface endpoints only)"
-  value       = aws_vpc_endpoint.this.network_interface_ids
+  value       = var.create ? aws_vpc_endpoint.this[0].network_interface_ids : null
 }
 
 output "subnet_ids" {
   description = "List of subnet IDs (Interface/GatewayLoadBalancer endpoints)"
-  value       = aws_vpc_endpoint.this.subnet_ids
+  value       = var.create ? aws_vpc_endpoint.this[0].subnet_ids : null
 }
 
 output "security_group_ids" {
@@ -82,8 +82,8 @@ output "ip_address_type" {
 
 output "dns_entries" {
   description = "DNS entries for the endpoint (Interface endpoints)"
-  value = aws_vpc_endpoint.this.dns_entry != null ? [
-    for entry in aws_vpc_endpoint.this.dns_entry : {
+  value = var.create ? aws_vpc_endpoint.this[0].dns_entry : null != null ? [
+    for entry in var.create ? aws_vpc_endpoint.this[0].dns_entry : null : {
       dns_name       = entry.dns_name
       hosted_zone_id = entry.hosted_zone_id
     }
@@ -92,8 +92,8 @@ output "dns_entries" {
 
 output "dns_names" {
   description = "List of DNS names for the endpoint (Interface endpoints)"
-  value = aws_vpc_endpoint.this.dns_entry != null ? [
-    for entry in aws_vpc_endpoint.this.dns_entry : entry.dns_name
+  value = var.create ? aws_vpc_endpoint.this[0].dns_entry : null != null ? [
+    for entry in var.create ? aws_vpc_endpoint.this[0].dns_entry : null : entry.dns_name
   ] : []
 }
 
@@ -103,17 +103,17 @@ output "dns_names" {
 
 output "route_table_ids" {
   description = "List of route table IDs (Gateway endpoints)"
-  value       = aws_vpc_endpoint.this.route_table_ids
+  value       = var.create ? aws_vpc_endpoint.this[0].route_table_ids : null
 }
 
 output "prefix_list_id" {
   description = "Prefix list ID of the exposed service (Gateway endpoints)"
-  value       = aws_vpc_endpoint.this.prefix_list_id
+  value       = var.create ? aws_vpc_endpoint.this[0].prefix_list_id : null
 }
 
 output "cidr_blocks" {
   description = "CIDR blocks of the exposed service (Gateway endpoints)"
-  value       = aws_vpc_endpoint.this.cidr_blocks
+  value       = var.create ? aws_vpc_endpoint.this[0].cidr_blocks : null
 }
 
 # ------------------------------------------------------------------------------
@@ -122,7 +122,7 @@ output "cidr_blocks" {
 
 output "policy" {
   description = "IAM policy document attached to the endpoint"
-  value       = aws_vpc_endpoint.this.policy
+  value       = var.create ? aws_vpc_endpoint.this[0].policy : null
 }
 
 # ------------------------------------------------------------------------------
@@ -131,12 +131,12 @@ output "policy" {
 
 output "owner_id" {
   description = "AWS account ID of the endpoint owner"
-  value       = aws_vpc_endpoint.this.owner_id
+  value       = var.create ? aws_vpc_endpoint.this[0].owner_id : null
 }
 
 output "requester_managed" {
   description = "Whether the endpoint is managed by the requester"
-  value       = aws_vpc_endpoint.this.requester_managed
+  value       = var.create ? aws_vpc_endpoint.this[0].requester_managed : null
 }
 
 # ------------------------------------------------------------------------------
@@ -147,13 +147,13 @@ output "summary" {
   description = "Summary of VPC endpoint configuration"
   value = {
     name                = local.endpoint_name
-    id                  = aws_vpc_endpoint.this.id
-    arn                 = aws_vpc_endpoint.this.arn
-    service_name        = aws_vpc_endpoint.this.service_name
+    id                  = var.create ? aws_vpc_endpoint.this[0].id : null
+    arn                 = var.create ? aws_vpc_endpoint.this[0].arn : null
+    service_name        = var.create ? aws_vpc_endpoint.this[0].service_name : null
     service_short_name  = local.service_short_name
-    endpoint_type       = aws_vpc_endpoint.this.vpc_endpoint_type
-    state               = aws_vpc_endpoint.this.state
-    vpc_id              = aws_vpc_endpoint.this.vpc_id
+    endpoint_type       = var.create ? aws_vpc_endpoint.this[0].vpc_endpoint_type : null
+    state               = var.create ? aws_vpc_endpoint.this[0].state : null
+    vpc_id              = var.create ? aws_vpc_endpoint.this[0].vpc_id : null
     private_dns_enabled = var.endpoint_type == "Interface" ? var.private_dns_enabled : null
     subnet_count        = var.endpoint_type != "Gateway" ? length(var.subnet_ids) : 0
     route_table_count   = var.endpoint_type == "Gateway" ? length(var.route_table_ids) : 0

@@ -10,6 +10,8 @@
 # ------------------------------------------------------------------------------
 
 resource "aws_s3_bucket" "main" {
+  count = var.create ? 1 : 0
+
   bucket        = local.bucket_name
   force_destroy = var.force_destroy
 
@@ -29,7 +31,9 @@ resource "aws_s3_bucket" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_s3_bucket_versioning" "main" {
-  bucket = aws_s3_bucket.main.id
+  count = var.create ? 1 : 0
+
+  bucket = aws_s3_bucket.main[0].id
 
   versioning_configuration {
     status     = var.versioning_enabled ? "Enabled" : "Suspended"
@@ -42,9 +46,9 @@ resource "aws_s3_bucket_versioning" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
-  count = var.encryption_enabled ? 1 : 0
+  count = var.create && var.encryption_enabled ? 1 : 0
 
-  bucket = aws_s3_bucket.main.id
+  bucket = aws_s3_bucket.main[0].id
 
   rule {
     apply_server_side_encryption_by_default {
@@ -61,7 +65,9 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_s3_bucket_public_access_block" "main" {
-  bucket = aws_s3_bucket.main.id
+  count = var.create ? 1 : 0
+
+  bucket = aws_s3_bucket.main[0].id
 
   block_public_acls       = var.block_public_access ? true : var.block_public_acls
   block_public_policy     = var.block_public_access ? true : var.block_public_policy
@@ -74,9 +80,9 @@ resource "aws_s3_bucket_public_access_block" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_s3_bucket_lifecycle_configuration" "main" {
-  count = length(var.lifecycle_rules) > 0 ? 1 : 0
+  count = var.create && length(var.lifecycle_rules) > 0 ? 1 : 0 ? 1 : 0
 
-  bucket = aws_s3_bucket.main.id
+  bucket = aws_s3_bucket.main[0].id
 
   dynamic "rule" {
     for_each = var.lifecycle_rules
@@ -152,7 +158,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "main" {
 resource "aws_s3_bucket_logging" "main" {
   count = var.logging_enabled ? 1 : 0
 
-  bucket = aws_s3_bucket.main.id
+  bucket = aws_s3_bucket.main[0].id
 
   target_bucket = var.logging_target_bucket
   target_prefix = var.logging_target_prefix
@@ -168,7 +174,7 @@ resource "aws_s3_bucket_replication_configuration" "main" {
   # Must have bucket versioning enabled
   depends_on = [aws_s3_bucket_versioning.main]
 
-  bucket = aws_s3_bucket.main.id
+  bucket = aws_s3_bucket.main[0].id
   role   = var.replication_role_arn
 
   dynamic "rule" {
@@ -228,7 +234,7 @@ resource "aws_s3_bucket_replication_configuration" "main" {
 resource "aws_s3_bucket_object_lock_configuration" "main" {
   count = var.object_lock_enabled && var.object_lock_configuration != null ? 1 : 0
 
-  bucket = aws_s3_bucket.main.id
+  bucket = aws_s3_bucket.main[0].id
 
   rule {
     default_retention {
@@ -244,9 +250,9 @@ resource "aws_s3_bucket_object_lock_configuration" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_s3_bucket_cors_configuration" "main" {
-  count = length(var.cors_rules) > 0 ? 1 : 0
+  count = var.create && length(var.cors_rules) > 0 ? 1 : 0 ? 1 : 0
 
-  bucket = aws_s3_bucket.main.id
+  bucket = aws_s3_bucket.main[0].id
 
   dynamic "cors_rule" {
     for_each = var.cors_rules
@@ -268,7 +274,7 @@ resource "aws_s3_bucket_cors_configuration" "main" {
 resource "aws_s3_bucket_intelligent_tiering_configuration" "main" {
   count = var.intelligent_tiering_enabled ? 1 : 0
 
-  bucket = aws_s3_bucket.main.id
+  bucket = aws_s3_bucket.main[0].id
   name   = var.intelligent_tiering_name
 
   status = "Enabled"

@@ -28,22 +28,22 @@ output "project_name" {
 
 output "alb_id" {
   description = "ID of the Application Load Balancer"
-  value       = aws_lb.this.id
+  value       = var.create ? aws_lb.this[0].id : null
 }
 
 output "alb_arn" {
   description = "ARN of the Application Load Balancer"
-  value       = aws_lb.this.arn
+  value       = var.create ? aws_lb.this[0].arn : null
 }
 
 output "alb_arn_suffix" {
   description = "ARN suffix for use with CloudWatch Metrics"
-  value       = aws_lb.this.arn_suffix
+  value       = var.create ? aws_lb.this[0].arn_suffix : null
 }
 
 output "alb_name" {
   description = "Name of the Application Load Balancer"
-  value       = aws_lb.this.name
+  value       = var.create ? aws_lb.this[0].name : null
 }
 
 # ========================================
@@ -52,12 +52,12 @@ output "alb_name" {
 
 output "dns_name" {
   description = "DNS name of the ALB (use with Route 53 alias records)"
-  value       = aws_lb.this.dns_name
+  value       = var.create ? aws_lb.this[0].dns_name : null
 }
 
 output "zone_id" {
   description = "Canonical hosted zone ID of the ALB (for Route 53 alias records)"
-  value       = aws_lb.this.zone_id
+  value       = var.create ? aws_lb.this[0].zone_id : null
 }
 
 # ========================================
@@ -66,7 +66,7 @@ output "zone_id" {
 
 output "alb_type" {
   description = "Type of load balancer"
-  value       = aws_lb.this.load_balancer_type
+  value       = var.create ? aws_lb.this[0].load_balancer_type : null
 }
 
 output "vpc_id" {
@@ -106,12 +106,12 @@ output "eks_cluster_name" {
 
 output "ip_address_type" {
   description = "IP address type of the ALB"
-  value       = aws_lb.this.ip_address_type
+  value       = var.create ? aws_lb.this[0].ip_address_type : null
 }
 
 output "is_internal" {
   description = "Whether the ALB is internal or internet-facing"
-  value       = aws_lb.this.internal
+  value       = var.create ? aws_lb.this[0].internal : null
 }
 
 # ========================================
@@ -235,8 +235,8 @@ output "cloudwatch_alarms" {
 output "route53_alias_config" {
   description = "Configuration for Route 53 alias record"
   value = {
-    name                   = aws_lb.this.dns_name
-    zone_id                = aws_lb.this.zone_id
+    name                   = var.create ? aws_lb.this[0].dns_name : null
+    zone_id                = var.create ? aws_lb.this[0].zone_id : null
     evaluate_target_health = true
   }
 }
@@ -249,22 +249,22 @@ output "summary" {
   description = "Summary of the ALB configuration"
   value = {
     # Identification
-    alb_id         = aws_lb.this.id
-    alb_arn        = aws_lb.this.arn
-    alb_arn_suffix = aws_lb.this.arn_suffix
-    alb_name       = aws_lb.this.name
+    alb_id         = var.create ? aws_lb.this[0].id : null
+    alb_arn        = var.create ? aws_lb.this[0].arn : null
+    alb_arn_suffix = var.create ? aws_lb.this[0].arn_suffix : null
+    alb_name       = var.create ? aws_lb.this[0].name : null
 
     # DNS
-    dns_name = aws_lb.this.dns_name
-    zone_id  = aws_lb.this.zone_id
+    dns_name = var.create ? aws_lb.this[0].dns_name : null
+    zone_id  = var.create ? aws_lb.this[0].zone_id : null
 
     # Configuration
-    alb_type             = aws_lb.this.load_balancer_type
-    is_internal          = aws_lb.this.internal
-    ip_address_type      = aws_lb.this.ip_address_type
-    vpc_id               = aws_lb.this.vpc_id
-    subnet_count         = length(aws_lb.this.subnets)
-    security_group_count = length(aws_lb.this.security_groups)
+    alb_type             = var.create ? aws_lb.this[0].load_balancer_type : null
+    is_internal          = var.create ? aws_lb.this[0].internal : null
+    ip_address_type      = var.create ? aws_lb.this[0].ip_address_type : null
+    vpc_id               = var.create ? aws_lb.this[0].vpc_id : null
+    subnet_count         = length(var.create ? aws_lb.this[0].subnets : null)
+    security_group_count = length(var.create ? aws_lb.this[0].security_groups : null)
 
     # Target groups
     target_group_count = length(aws_lb_target_group.this)
@@ -283,8 +283,8 @@ output "summary" {
 
     # Route 53 integration
     route53_alias = {
-      name                   = aws_lb.this.dns_name
-      zone_id                = aws_lb.this.zone_id
+      name                   = var.create ? aws_lb.this[0].dns_name : null
+      zone_id                = var.create ? aws_lb.this[0].zone_id : null
       evaluate_target_health = true
     }
   }

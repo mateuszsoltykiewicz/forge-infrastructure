@@ -169,7 +169,7 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   alarm_actions       = var.notification_topic_arn != "" ? [var.notification_topic_arn] : []
 
   dimensions = {
-    ReplicationGroupId = aws_elasticache_replication_group.main.id
+    ReplicationGroupId = aws_elasticache_replication_group.main[0].id
   }
 
   tags = local.merged_tags
@@ -189,7 +189,7 @@ resource "aws_cloudwatch_metric_alarm" "high_memory" {
   alarm_actions       = var.notification_topic_arn != "" ? [var.notification_topic_arn] : []
 
   dimensions = {
-    ReplicationGroupId = aws_elasticache_replication_group.main.id
+    ReplicationGroupId = aws_elasticache_replication_group.main[0].id
   }
 
   tags = local.merged_tags
@@ -209,7 +209,7 @@ resource "aws_cloudwatch_metric_alarm" "high_evictions" {
   alarm_actions       = var.notification_topic_arn != "" ? [var.notification_topic_arn] : []
 
   dimensions = {
-    ReplicationGroupId = aws_elasticache_replication_group.main.id
+    ReplicationGroupId = aws_elasticache_replication_group.main[0].id
   }
 
   tags = local.merged_tags
@@ -231,7 +231,7 @@ resource "aws_cloudwatch_metric_alarm" "high_replication_lag" {
   alarm_actions       = var.notification_topic_arn != "" ? [var.notification_topic_arn] : []
 
   dimensions = {
-    ReplicationGroupId = aws_elasticache_replication_group.main.id
+    ReplicationGroupId = aws_elasticache_replication_group.main[0].id
   }
 
   tags = local.merged_tags
@@ -251,7 +251,7 @@ resource "aws_cloudwatch_metric_alarm" "high_connections" {
   alarm_actions       = var.notification_topic_arn != "" ? [var.notification_topic_arn] : []
 
   dimensions = {
-    ReplicationGroupId = aws_elasticache_replication_group.main.id
+    ReplicationGroupId = aws_elasticache_replication_group.main[0].id
   }
 
   tags = local.merged_tags

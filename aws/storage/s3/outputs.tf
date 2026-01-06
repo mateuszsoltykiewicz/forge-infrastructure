@@ -10,32 +10,32 @@
 
 output "bucket_id" {
   description = "The name of the bucket"
-  value       = aws_s3_bucket.main.id
+  value       = var.create ? aws_s3_bucket.main[0].id : null
 }
 
 output "bucket_arn" {
   description = "The ARN of the bucket"
-  value       = aws_s3_bucket.main.arn
+  value       = var.create ? aws_s3_bucket.main[0].arn : null
 }
 
 output "bucket_domain_name" {
   description = "The bucket domain name (bucket-name.s3.amazonaws.com)"
-  value       = aws_s3_bucket.main.bucket_domain_name
+  value       = var.create ? aws_s3_bucket.main[0].bucket_domain_name : null
 }
 
 output "bucket_regional_domain_name" {
   description = "The bucket region-specific domain name (bucket-name.s3.region.amazonaws.com)"
-  value       = aws_s3_bucket.main.bucket_regional_domain_name
+  value       = var.create ? aws_s3_bucket.main[0].bucket_regional_domain_name : null
 }
 
 output "bucket_region" {
   description = "The AWS region this bucket resides in"
-  value       = aws_s3_bucket.main.region
+  value       = var.create ? aws_s3_bucket.main[0].region : null
 }
 
 output "bucket_hosted_zone_id" {
   description = "The Route 53 Hosted Zone ID for this bucket's region"
-  value       = aws_s3_bucket.main.hosted_zone_id
+  value       = var.create ? aws_s3_bucket.main[0].hosted_zone_id : null
 }
 
 # ------------------------------------------------------------------------------
@@ -83,12 +83,12 @@ output "object_lock_enabled" {
 
 output "bucket_website_endpoint" {
   description = "The website endpoint (if bucket is configured for static hosting)"
-  value       = try(aws_s3_bucket.main.website_endpoint, "")
+  value       = try(var.create ? aws_s3_bucket.main[0].website_endpoint : null, "")
 }
 
 output "bucket_website_domain" {
   description = "The domain of the website endpoint (if bucket is configured for static hosting)"
-  value       = try(aws_s3_bucket.main.website_domain, "")
+  value       = try(var.create ? aws_s3_bucket.main[0].website_domain : null, "")
 }
 
 # ------------------------------------------------------------------------------
@@ -97,7 +97,7 @@ output "bucket_website_domain" {
 
 output "tags" {
   description = "All tags applied to the bucket"
-  value       = aws_s3_bucket.main.tags_all
+  value       = var.create ? aws_s3_bucket.main[0].tags_all : null
 }
 
 output "bucket_purpose" {

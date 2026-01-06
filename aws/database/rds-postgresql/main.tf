@@ -22,6 +22,8 @@ resource "random_password" "master" {
 # ------------------------------------------------------------------------------
 
 resource "aws_db_subnet_group" "main" {
+  count = var.create ? 1 : 0
+
   name       = "${local.db_identifier}-subnet-group"
   subnet_ids = aws_subnet.rds_private[*].id
 
@@ -40,6 +42,8 @@ resource "aws_db_subnet_group" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_db_parameter_group" "main" {
+  count = var.create ? 1 : 0
+
   name   = "${local.db_identifier}-params"
   family = var.parameter_group_family
 
@@ -68,6 +72,8 @@ resource "aws_db_parameter_group" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_db_instance" "main" {
+  count = var.create ? 1 : 0
+
   identifier = local.db_identifier
 
   # Engine Configuration
@@ -89,7 +95,7 @@ resource "aws_db_instance" "main" {
   port     = var.port
 
   # Network Configuration
-  db_subnet_group_name   = aws_db_subnet_group.main.name
+  db_subnet_group_name   = aws_db_subnet_group.main[0].name
   vpc_security_group_ids = [aws_security_group.rds.id]
   publicly_accessible    = var.publicly_accessible
 
@@ -122,7 +128,7 @@ resource "aws_db_instance" "main" {
   performance_insights_kms_key_id       = var.performance_insights_enabled ? aws_kms_key.rds.arn : null
 
   # Parameter Group
-  parameter_group_name = aws_db_parameter_group.main.name
+  parameter_group_name = aws_db_parameter_group.main[0].name
 
   # Auto Minor Version Upgrade
   auto_minor_version_upgrade = true
@@ -160,9 +166,11 @@ resource "aws_db_instance" "main" {
 
 # Store RDS endpoint in SSM
 resource "aws_ssm_parameter" "rds_endpoint" {
+  count = var.create ? 1 : 0
+
   name  = "/${var.environment}/${local.db_identifier}/endpoint"
   type  = "String"
-  value = aws_db_instance.main.endpoint
+  value = aws_db_instance.main[0].endpoint
 
   tags = merge(
     local.merged_tags,
@@ -174,6 +182,8 @@ resource "aws_ssm_parameter" "rds_endpoint" {
 
 # Store master password in SSM (SecureString with KMS encryption)
 resource "aws_ssm_parameter" "rds_master_password" {
+  count = var.create ? 1 : 0
+
   name   = "/${var.environment}/${local.db_identifier}/master-password"
   type   = "SecureString"
   key_id = aws_kms_key.rds.arn
@@ -181,7 +191,7 @@ resource "aws_ssm_parameter" "rds_master_password" {
     username = var.master_username
     password = local.master_password
     engine   = "postgres"
-    host     = aws_db_instance.main.address
+    host     = aws_db_instance.main[0].address
     port     = var.port
     dbname   = var.database_name
   })

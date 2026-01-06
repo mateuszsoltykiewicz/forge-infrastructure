@@ -15,7 +15,7 @@
 # ------------------------------------------------------------------------------
 
 resource "aws_iam_role" "vpn_cloudwatch_logs" {
-  count = var.enable_connection_logs ? 1 : 0
+  count = var.create && var.enable_connection_logs ? 1 : 0
 
   name_prefix = "${local.vpn_name}-cloudwatch-logs-"
   description = "IAM role for AWS Client VPN to publish connection logs to CloudWatch"
@@ -42,7 +42,7 @@ resource "aws_iam_role" "vpn_cloudwatch_logs" {
 }
 
 resource "aws_iam_role_policy" "vpn_cloudwatch_logs" {
-  count = var.enable_connection_logs ? 1 : 0
+  count = var.create && var.enable_connection_logs ? 1 : 0
 
   name_prefix = "${local.vpn_name}-cloudwatch-logs-"
   role        = aws_iam_role.vpn_cloudwatch_logs[0].id
@@ -69,6 +69,8 @@ resource "aws_iam_role_policy" "vpn_cloudwatch_logs" {
 # ------------------------------------------------------------------------------
 
 resource "aws_ec2_client_vpn_endpoint" "this" {
+  count = var.create ? 1 : 0
+
   description = "AWS Client VPN Endpoint for ${local.vpn_name}"
 
   # Network Configuration
@@ -145,7 +147,7 @@ resource "aws_ec2_client_vpn_endpoint" "this" {
 resource "aws_ec2_client_vpn_network_association" "this" {
   count = length(var.subnet_ids)
 
-  client_vpn_endpoint_id = aws_ec2_client_vpn_endpoint.this.id
+  client_vpn_endpoint_id = aws_ec2_client_vpn_endpoint.this[0].id
   subnet_id              = var.subnet_ids[count.index]
 
   lifecycle {
@@ -162,7 +164,7 @@ resource "aws_ec2_client_vpn_network_association" "this" {
 resource "aws_ec2_client_vpn_route" "vpc_route" {
   count = length(var.subnet_ids)
 
-  client_vpn_endpoint_id = aws_ec2_client_vpn_endpoint.this.id
+  client_vpn_endpoint_id = aws_ec2_client_vpn_endpoint.this[0].id
   destination_cidr_block = var.vpc_cidr_block
   target_vpc_subnet_id   = aws_ec2_client_vpn_network_association.this[count.index].subnet_id
   description            = "Route to VPC CIDR block via subnet ${var.subnet_ids[count.index]}"

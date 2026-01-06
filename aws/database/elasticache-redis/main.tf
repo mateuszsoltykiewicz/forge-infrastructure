@@ -22,6 +22,8 @@ resource "random_password" "auth_token" {
 # ------------------------------------------------------------------------------
 
 resource "aws_elasticache_subnet_group" "main" {
+  count = var.create ? 1 : 0
+
   name       = "${local.replication_group_id}-subnet-group"
   subnet_ids = aws_subnet.redis_private[*].id
 
@@ -40,7 +42,7 @@ resource "aws_elasticache_subnet_group" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_elasticache_parameter_group" "main" {
-  count = var.create_parameter_group ? 1 : 0
+  count = var.create && var.create_parameter_group ? 1 : 0
 
   name        = local.parameter_group_name
   family      = var.parameter_group_family
@@ -71,6 +73,8 @@ resource "aws_elasticache_parameter_group" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_elasticache_replication_group" "main" {
+  count = var.create ? 1 : 0
+
   replication_group_id = local.replication_group_id
   description          = var.description
 
@@ -89,7 +93,7 @@ resource "aws_elasticache_replication_group" "main" {
   multi_az_enabled           = var.multi_az_enabled
 
   # Network Configuration
-  subnet_group_name           = aws_elasticache_subnet_group.main.name
+  subnet_group_name           = aws_elasticache_subnet_group.main[0].name
   security_group_ids          = [aws_security_group.redis.id]
   preferred_cache_cluster_azs = length(var.preferred_cache_cluster_azs) > 0 ? var.preferred_cache_cluster_azs : null
 
@@ -153,10 +157,12 @@ resource "aws_elasticache_replication_group" "main" {
 
 # Redis primary endpoint
 resource "aws_ssm_parameter" "redis_primary_endpoint" {
+  count = var.create ? 1 : 0
+
   name        = "/${var.environment}/${local.replication_group_id}/primary-endpoint"
   description = "Redis primary endpoint for ${local.replication_group_id}"
   type        = "String"
-  value       = aws_elasticache_replication_group.main.primary_endpoint_address
+  value       = aws_elasticache_replication_group.main[0].primary_endpoint_address
 
   tags = merge(
     local.merged_tags,
@@ -168,12 +174,12 @@ resource "aws_ssm_parameter" "redis_primary_endpoint" {
 
 # Redis reader endpoint (if Multi-AZ)
 resource "aws_ssm_parameter" "redis_reader_endpoint" {
-  count = var.multi_az_enabled ? 1 : 0
+  count = var.create && var.multi_az_enabled ? 1 : 0
 
   name        = "/${var.environment}/${local.replication_group_id}/reader-endpoint"
   description = "Redis reader endpoint for ${local.replication_group_id}"
   type        = "String"
-  value       = aws_elasticache_replication_group.main.reader_endpoint_address
+  value       = aws_elasticache_replication_group.main[0].reader_endpoint_address
 
   tags = merge(
     local.merged_tags,
@@ -185,6 +191,8 @@ resource "aws_ssm_parameter" "redis_reader_endpoint" {
 
 # Redis port
 resource "aws_ssm_parameter" "redis_port" {
+  count = var.create ? 1 : 0
+
   name        = "/${var.environment}/${local.replication_group_id}/port"
   description = "Redis port for ${local.replication_group_id}"
   type        = "String"
@@ -200,7 +208,7 @@ resource "aws_ssm_parameter" "redis_port" {
 
 # Auth token (SecureString)
 resource "aws_ssm_parameter" "redis_auth_token" {
-  count = var.auth_token_enabled ? 1 : 0
+  count = var.create && var.auth_token_enabled ? 1 : 0
 
   name        = "/${var.environment}/${local.replication_group_id}/auth-token"
   description = "Redis AUTH token for ${local.replication_group_id}"

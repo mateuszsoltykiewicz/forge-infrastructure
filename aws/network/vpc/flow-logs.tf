@@ -10,7 +10,7 @@
 # ------------------------------------------------------------------------------
 
 resource "aws_cloudwatch_log_group" "flow_logs" {
-  count = var.enable_flow_logs ? 1 : 0
+  count = var.create && var.enable_flow_logs ? 1 : 0
 
   name              = "/aws/vpc/${var.vpc_name}/flow-logs"
   retention_in_days = var.flow_logs_retention_days
@@ -30,7 +30,7 @@ resource "aws_cloudwatch_log_group" "flow_logs" {
 # ------------------------------------------------------------------------------
 
 resource "aws_iam_role" "flow_logs" {
-  count = var.enable_flow_logs ? 1 : 0
+  count = var.create && var.enable_flow_logs ? 1 : 0
 
   name = "${var.vpc_name}-flow-logs-role"
   assume_role_policy = jsonencode({
@@ -87,9 +87,9 @@ resource "aws_iam_role_policy" "flow_logs" {
 # ------------------------------------------------------------------------------
 
 resource "aws_flow_log" "main" {
-  count = var.enable_flow_logs ? 1 : 0
+  count = var.create && var.enable_flow_logs ? 1 : 0
 
-  vpc_id                   = aws_vpc.this.id
+  vpc_id                   = aws_vpc.this[0].id
   traffic_type             = var.flow_logs_traffic_type
   iam_role_arn             = aws_iam_role.flow_logs[0].arn
   log_destination_type     = "cloud-watch-logs"

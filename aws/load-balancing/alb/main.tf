@@ -8,6 +8,8 @@
 # ========================================
 
 resource "aws_lb" "this" {
+  count = var.create ? 1 : 0
+
   name               = local.alb_name
   load_balancer_type = var.load_balancer_type
   internal           = var.internal
@@ -75,7 +77,7 @@ resource "aws_lb" "this" {
 resource "aws_wafv2_web_acl_association" "this" {
   count = var.web_acl_arn != null ? 1 : 0
 
-  resource_arn = aws_lb.this.arn
+  resource_arn = aws_lb.this[0].arn
   web_acl_arn  = var.web_acl_arn
 }
 
@@ -84,7 +86,7 @@ resource "aws_wafv2_web_acl_association" "this" {
 # ========================================
 
 resource "aws_lb_target_group" "this" {
-  for_each = var.target_groups
+  for_each = var.create ? var.target_groups : {}
 
   name        = "${local.tg_name_prefix}-${each.key}"
   port        = each.value.port
@@ -146,7 +148,7 @@ resource "aws_lb_target_group" "this" {
 resource "aws_lb_listener" "http" {
   count = local.http_listener_enabled ? 1 : 0
 
-  load_balancer_arn = aws_lb.this.arn
+  load_balancer_arn = aws_lb.this[0].arn
   port              = var.http_listener.port
   protocol          = "HTTP"
 
@@ -195,7 +197,7 @@ resource "aws_lb_listener" "http" {
 resource "aws_lb_listener" "https" {
   count = local.https_listener_enabled ? 1 : 0
 
-  load_balancer_arn = aws_lb.this.arn
+  load_balancer_arn = aws_lb.this[0].arn
   port              = var.https_listener.port
   protocol          = "HTTPS"
   ssl_policy        = var.https_listener.ssl_policy

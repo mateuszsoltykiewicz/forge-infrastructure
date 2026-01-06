@@ -11,7 +11,7 @@
 
 # Authorize access to entire VPC CIDR block
 resource "aws_ec2_client_vpn_authorization_rule" "vpc_access" {
-  client_vpn_endpoint_id = aws_ec2_client_vpn_endpoint.this.id
+  client_vpn_endpoint_id = aws_ec2_client_vpn_endpoint.this[0].id
   target_network_cidr    = var.vpc_cidr_block
   authorize_all_groups   = var.authorize_all_groups
   access_group_id        = var.authorize_all_groups ? null : var.access_group_id
@@ -29,7 +29,7 @@ resource "aws_ec2_client_vpn_authorization_rule" "vpc_access" {
 resource "aws_ec2_client_vpn_authorization_rule" "client_to_client" {
   count = var.split_tunnel ? 1 : 0
 
-  client_vpn_endpoint_id = aws_ec2_client_vpn_endpoint.this.id
+  client_vpn_endpoint_id = aws_ec2_client_vpn_endpoint.this[0].id
   target_network_cidr    = var.client_cidr_block
   authorize_all_groups   = var.authorize_all_groups
   access_group_id        = var.authorize_all_groups ? null : var.access_group_id
@@ -46,7 +46,7 @@ resource "aws_ec2_client_vpn_authorization_rule" "client_to_client" {
 resource "aws_ec2_client_vpn_authorization_rule" "additional" {
   for_each = { for idx, rule in var.authorization_rules : idx => rule }
 
-  client_vpn_endpoint_id = aws_ec2_client_vpn_endpoint.this.id
+  client_vpn_endpoint_id = aws_ec2_client_vpn_endpoint.this[0].id
   target_network_cidr    = each.value.target_network_cidr
   authorize_all_groups   = each.value.access_group_id == null ? true : false
   access_group_id        = each.value.access_group_id

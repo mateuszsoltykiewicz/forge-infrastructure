@@ -69,12 +69,12 @@ output "public_route_table_id" {
 
 output "cluster_id" {
   description = "The ID/name of the EKS cluster"
-  value       = module.eks.cluster_id
+  value       = var.create ? module.eks.cluster_id : null
 }
 
 output "cluster_arn" {
   description = "The ARN of the EKS cluster"
-  value       = module.eks.cluster_arn
+  value       = var.create ? module.eks.cluster_arn : null
 }
 
 output "project_name" {
@@ -89,33 +89,33 @@ output "customer_name" {
 
 output "cluster_name" {
   description = "The name of the EKS cluster"
-  value       = module.eks.cluster_name
+  value       = var.create ? module.eks.cluster_name : null
 }
 
 output "cluster_endpoint" {
   description = "Endpoint for the EKS cluster API server"
-  value       = module.eks.cluster_endpoint
+  value       = var.create ? module.eks.cluster_endpoint : null
 }
 
 output "cluster_version" {
   description = "The Kubernetes server version of the cluster"
-  value       = module.eks.cluster_version
+  value       = var.create ? module.eks.cluster_version : null
 }
 
 output "cluster_platform_version" {
   description = "The platform version of the EKS cluster"
-  value       = module.eks.cluster_platform_version
+  value       = var.create ? module.eks.cluster_platform_version : null
 }
 
 output "cluster_certificate_authority_data" {
   description = "Base64 encoded certificate data required to communicate with the cluster"
-  value       = module.eks.cluster_certificate_authority_data
+  value       = var.create ? module.eks.cluster_certificate_authority_data : null
   sensitive   = true
 }
 
 output "cluster_security_group_id" {
   description = "Security group ID attached to the EKS cluster"
-  value       = module.eks.cluster_security_group_id
+  value       = var.create ? module.eks.cluster_security_group_id : null
 }
 
 # ------------------------------------------------------------------------------
@@ -124,12 +124,12 @@ output "cluster_security_group_id" {
 
 output "oidc_provider_arn" {
   description = "ARN of the OIDC Provider for IRSA"
-  value       = module.eks.oidc_provider_arn
+  value       = var.create ? module.eks.oidc_provider_arn : null
 }
 
 output "oidc_provider" {
   description = "OIDC provider URL (without https://)"
-  value       = module.eks.oidc_provider
+  value       = var.create ? module.eks.oidc_provider : null
 }
 
 output "cluster_oidc_issuer_url" {
@@ -143,17 +143,17 @@ output "cluster_oidc_issuer_url" {
 
 output "node_security_group_id" {
   description = "Security group ID attached to the EKS nodes"
-  value       = module.eks.node_security_group_id
+  value       = var.create ? module.eks.node_security_group_id : null
 }
 
 output "eks_managed_node_groups" {
   description = "Map of attribute maps for all EKS managed node groups"
-  value       = module.eks.eks_managed_node_groups
+  value       = var.create ? module.eks.eks_managed_node_groups : null
 }
 
 output "eks_managed_node_groups_autoscaling_group_names" {
   description = "List of the autoscaling group names for EKS managed node groups"
-  value       = module.eks.eks_managed_node_groups_autoscaling_group_names
+  value       = var.create ? module.eks.eks_managed_node_groups_autoscaling_group_names : null
 }
 
 # ------------------------------------------------------------------------------
@@ -162,17 +162,17 @@ output "eks_managed_node_groups_autoscaling_group_names" {
 
 output "kms_key_id" {
   description = "The ID of the KMS key used for EKS encryption"
-  value       = aws_kms_key.eks.key_id
+  value       = var.create ? aws_kms_key.eks[0].key_id : null
 }
 
 output "kms_key_arn" {
   description = "The ARN of the KMS key used for EKS encryption"
-  value       = aws_kms_key.eks.arn
+  value       = var.create ? aws_kms_key.eks[0].arn : null
 }
 
 output "kms_key_alias" {
   description = "The alias of the KMS key used for EKS encryption"
-  value       = aws_kms_alias.eks.name
+  value       = var.create ? aws_kms_alias.eks[0].name : null
 }
 
 # ------------------------------------------------------------------------------
@@ -215,12 +215,12 @@ output "cluster_autoscaler_irsa_role_name" {
 
 output "cloudwatch_log_group_name" {
   description = "Name of the CloudWatch log group for cluster logs"
-  value       = module.eks.cloudwatch_log_group_name
+  value       = var.create ? module.eks.cloudwatch_log_group_name : null
 }
 
 output "cloudwatch_log_group_arn" {
   description = "ARN of the CloudWatch log group for cluster logs"
-  value       = module.eks.cloudwatch_log_group_arn
+  value       = var.create ? module.eks.cloudwatch_log_group_arn : null
 }
 
 # ------------------------------------------------------------------------------
@@ -229,7 +229,7 @@ output "cloudwatch_log_group_arn" {
 
 output "cluster_addons" {
   description = "Map of attribute maps for all EKS cluster addons"
-  value       = module.eks.cluster_addons
+  value       = var.create ? module.eks.cluster_addons : null
 }
 
 # ------------------------------------------------------------------------------
@@ -238,7 +238,7 @@ output "cluster_addons" {
 
 output "access_entries" {
   description = "Map of access entries for cluster access management"
-  value       = module.eks.access_entries
+  value       = var.create ? module.eks.access_entries : null
 }
 
 # ------------------------------------------------------------------------------
