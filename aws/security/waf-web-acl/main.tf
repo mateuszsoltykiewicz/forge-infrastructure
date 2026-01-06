@@ -4,7 +4,7 @@
 
 # IP Allow List
 resource "aws_wafv2_ip_set" "allow_list" {
-  count = local.has_ip_allow_list ? 1 : 0
+  count = var.create && local.has_ip_allow_list ? 1 : 0
 
   name               = "${local.waf_name}-allow-list"
   description        = "IP addresses allowed to bypass WAF rules"
@@ -27,7 +27,7 @@ resource "aws_wafv2_ip_set" "allow_list" {
 
 # IP Block List
 resource "aws_wafv2_ip_set" "block_list" {
-  count = local.has_ip_block_list ? 1 : 0
+  count = var.create && local.has_ip_block_list ? 1 : 0
 
   name               = "${local.waf_name}-block-list"
   description        = "IP addresses explicitly blocked by WAF"
@@ -53,6 +53,8 @@ resource "aws_wafv2_ip_set" "block_list" {
 # ========================================
 
 resource "aws_wafv2_web_acl" "main" {
+  count = var.create ? 1 : 0
+
   name        = local.waf_name
   description = "WAF Web ACL for ${var.customer_name} ${var.environment} environment"
   scope       = var.scope
@@ -348,7 +350,7 @@ resource "aws_wafv2_web_acl" "main" {
 # ========================================
 
 resource "aws_cloudwatch_log_group" "waf" {
-  count = local.should_create_log_group ? 1 : 0
+  count = var.create && local.should_create_log_group ? 1 : 0
 
   name              = local.log_group_name
   retention_in_days = var.cloudwatch_log_retention_days
@@ -367,9 +369,9 @@ resource "aws_cloudwatch_log_group" "waf" {
 # ========================================
 
 resource "aws_wafv2_web_acl_logging_configuration" "main" {
-  count = var.enable_logging && length(local.log_destination_configs) > 0 ? 1 : 0
+  count = var.create && var.enable_logging && length(local.log_destination_configs) > 0 ? 1 : 0
 
-  resource_arn            = aws_wafv2_web_acl.main.arn
+  resource_arn            = aws_wafv2_web_acl.main[0].arn
   log_destination_configs = local.log_destination_configs
 
   # Redact sensitive fields
@@ -393,10 +395,10 @@ resource "aws_wafv2_web_acl_logging_configuration" "main" {
 # ========================================
 
 resource "aws_wafv2_web_acl_association" "alb" {
-  count = local.has_alb_association ? 1 : 0
+  count = var.create && local.has_alb_association ? 1 : 0
 
   resource_arn = var.alb_arn
-  web_acl_arn  = aws_wafv2_web_acl.main.arn
+  web_acl_arn  = aws_wafv2_web_acl.main[0].arn
 
   lifecycle {
     create_before_destroy = true

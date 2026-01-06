@@ -4,22 +4,22 @@
 
 output "web_acl_arn" {
   description = "ARN of the WAF Web ACL. Use this with ALB, API Gateway, or CloudFront."
-  value       = aws_wafv2_web_acl.main.arn
+  value       = var.create ? aws_wafv2_web_acl.main[0].arn : null
 }
 
 output "web_acl_id" {
   description = "ID of the WAF Web ACL"
-  value       = aws_wafv2_web_acl.main.id
+  value       = var.create ? aws_wafv2_web_acl.main[0].id : null
 }
 
 output "web_acl_name" {
   description = "Name of the WAF Web ACL"
-  value       = aws_wafv2_web_acl.main.name
+  value       = var.create ? aws_wafv2_web_acl.main[0].name : null
 }
 
 output "web_acl_capacity" {
   description = "Web ACL capacity units (WCUs) used"
-  value       = aws_wafv2_web_acl.main.capacity
+  value       = var.create ? aws_wafv2_web_acl.main[0].capacity : null
 }
 
 # ========================================
@@ -28,22 +28,22 @@ output "web_acl_capacity" {
 
 output "ip_allow_list_arn" {
   description = "ARN of the IP allow list IP set"
-  value       = local.has_ip_allow_list ? aws_wafv2_ip_set.allow_list[0].arn : null
+  value       = var.create && local.has_ip_allow_list ? aws_wafv2_ip_set.allow_list[0].arn : null
 }
 
 output "ip_allow_list_id" {
   description = "ID of the IP allow list IP set"
-  value       = local.has_ip_allow_list ? aws_wafv2_ip_set.allow_list[0].id : null
+  value       = var.create && local.has_ip_allow_list ? aws_wafv2_ip_set.allow_list[0].id : null
 }
 
 output "ip_block_list_arn" {
   description = "ARN of the IP block list IP set"
-  value       = local.has_ip_block_list ? aws_wafv2_ip_set.block_list[0].arn : null
+  value       = var.create && local.has_ip_block_list ? aws_wafv2_ip_set.block_list[0].arn : null
 }
 
 output "ip_block_list_id" {
   description = "ID of the IP block list IP set"
-  value       = local.has_ip_block_list ? aws_wafv2_ip_set.block_list[0].id : null
+  value       = var.create && local.has_ip_block_list ? aws_wafv2_ip_set.block_list[0].id : null
 }
 
 # ========================================
@@ -101,12 +101,12 @@ output "log_destination_type" {
 
 output "cloudwatch_log_group_arn" {
   description = "ARN of the CloudWatch Log Group for WAF logs"
-  value       = local.should_create_log_group ? aws_cloudwatch_log_group.waf[0].arn : null
+  value       = var.create && local.should_create_log_group ? aws_cloudwatch_log_group.waf[0].arn : null
 }
 
 output "cloudwatch_log_group_name" {
   description = "Name of the CloudWatch Log Group for WAF logs"
-  value       = local.should_create_log_group ? aws_cloudwatch_log_group.waf[0].name : null
+  value       = var.create && local.should_create_log_group ? aws_cloudwatch_log_group.waf[0].name : null
 }
 
 output "log_retention_days" {
@@ -120,12 +120,12 @@ output "log_retention_days" {
 
 output "alb_association_created" {
   description = "Whether the WAF was automatically associated with an ALB"
-  value       = local.has_alb_association
+  value       = var.create && local.has_alb_association
 }
 
 output "associated_alb_arn" {
   description = "ARN of the associated ALB (if any)"
-  value       = local.has_alb_association ? var.alb_arn : null
+  value       = var.create && local.has_alb_association ? var.alb_arn : null
 }
 
 # ========================================
@@ -134,17 +134,17 @@ output "associated_alb_arn" {
 
 output "alb_integration" {
   description = "Configuration object for ALB integration"
-  value = {
-    web_acl_arn = aws_wafv2_web_acl.main.arn
+  value = var.create ? {
+    web_acl_arn = aws_wafv2_web_acl.main[0].arn
     scope       = var.scope
     region      = var.region
-  }
+  } : null
 }
 
 output "cloudfront_integration" {
   description = "Configuration object for CloudFront integration (requires us-east-1)"
-  value = var.scope == "CLOUDFRONT" ? {
-    web_acl_arn = aws_wafv2_web_acl.main.arn
+  value = var.create && var.scope == "CLOUDFRONT" ? {
+    web_acl_arn = aws_wafv2_web_acl.main[0].arn
     scope       = var.scope
     region      = var.region
   } : null
@@ -152,8 +152,8 @@ output "cloudfront_integration" {
 
 output "api_gateway_integration" {
   description = "Configuration object for API Gateway integration"
-  value = var.scope == "REGIONAL" ? {
-    web_acl_arn = aws_wafv2_web_acl.main.arn
+  value = var.create && var.scope == "REGIONAL" ? {
+    web_acl_arn = aws_wafv2_web_acl.main[0].arn
     scope       = var.scope
     region      = var.region
   } : null

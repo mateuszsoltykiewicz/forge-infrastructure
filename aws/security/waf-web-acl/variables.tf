@@ -1,4 +1,14 @@
 # ========================================
+# Resource Creation Control
+# ========================================
+
+variable "create" {
+  description = "Whether to create the WAF Web ACL and related resources. Set to false to skip resource creation."
+  type        = bool
+  default     = true
+}
+
+# ========================================
 # Customer Context Variables
 # ========================================
 
