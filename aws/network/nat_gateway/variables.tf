@@ -145,34 +145,16 @@ variable "aws_region" {
 # Customer Context (Optional - for dedicated customer VPCs)
 # ------------------------------------------------------------------------------
 
-variable "customer_id" {
-  description = "Customer UUID (null for shared Forge infrastructure)"
-  type        = string
-  default     = null
-
-  validation {
-    condition = var.customer_id == null || can(
-      regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.customer_id)
-    )
-    error_message = "Customer ID must be a valid UUID or null."
-  }
-}
-
 variable "customer_name" {
   description = "Customer name (null for shared Forge infrastructure)"
   type        = string
   default     = null
 }
 
-variable "architecture_type" {
-  description = "Architecture type: 'shared' (multi-tenant), 'dedicated_local' (single region), 'dedicated_regional' (multi-region)"
+variable "project_name" {
+  description = "Project name for multi-tenant deployments"
   type        = string
-  default     = "shared"
-
-  validation {
-    condition     = contains(["shared", "dedicated_local", "dedicated_regional"], var.architecture_type)
-    error_message = "Architecture type must be 'shared', 'dedicated_local', or 'dedicated_regional'."
-  }
+  default     = null
 }
 
 variable "plan_tier" {

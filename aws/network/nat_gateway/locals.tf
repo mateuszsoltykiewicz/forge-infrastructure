@@ -12,6 +12,7 @@ locals {
 
   # Customer context
   has_customer = var.customer_name != null && var.customer_name != ""
+  has_project  = var.project_name != null && var.project_name != ""
 
   # ------------------------------------------------------------------------------
   # EIP Capacity Planning
@@ -85,10 +86,15 @@ locals {
   # NAT Gateway Naming
   # ------------------------------------------------------------------------------
 
-  nat_name_prefix = var.architecture_type == "shared" ? (
-    "${var.vpc_name}-nat"
-    ) : (
+  # 1. Shared: {vpc_name}-nat
+  # 2. Customer: {customer}-{region}-nat  
+  # 3. Project: {customer}-{project}-{region}-nat
+  nat_name_prefix = local.has_project ? (
+    "${var.customer_name}-${var.project_name}-${var.aws_region}-nat"
+    ) : local.has_customer ? (
     "${var.customer_name}-${var.aws_region}-nat"
+    ) : (
+    "${var.vpc_name}-nat"
   )
 
   # ------------------------------------------------------------------------------
@@ -105,12 +111,14 @@ locals {
     Region      = var.aws_region
   }
 
-  # Customer-specific tags (only for dedicated VPCs)
-  customer_tags = local.is_customer_vpc ? {
-    CustomerId       = var.customer_id
-    CustomerName     = var.customer_name
-    ArchitectureType = var.architecture_type
-    PlanTier         = var.plan_tier
+  # Customer-specific tags
+  customer_tags = local.has_customer ? {
+    CustomerName = var.customer_name
+  } : {}
+
+  # Project-specific tags
+  project_tags = local.has_project ? {
+    ProjectName = var.project_name
   } : {}
 
   # NAT Gateway-specific tags
@@ -123,6 +131,7 @@ locals {
   merged_tags = merge(
     local.base_tags,
     local.customer_tags,
+    local.project_tags,
     var.merged_tags
   )
 }

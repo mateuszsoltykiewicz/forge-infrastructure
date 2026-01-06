@@ -6,11 +6,12 @@
 
 locals {
   # ------------------------------------------------------------------------------
-  # Architecture Detection
+  # Multi-tenant Context
   # ------------------------------------------------------------------------------
 
-  # Determine if this is shared or dedicated architecture
-  is_shared_architecture = var.architecture_type == "shared"
+  # Determine customer/project context
+  has_customer = var.customer_name != null && var.customer_name != ""
+  has_project  = var.project_name != null && var.project_name != ""
 
   # ------------------------------------------------------------------------------
   # Zone Naming
@@ -73,18 +74,22 @@ locals {
     ZoneType        = var.zone_type
   }
 
-  # Customer-specific tags (only applied for dedicated architectures)
-  customer_tags = !local.is_shared_architecture ? {
-    CustomerId       = var.customer_id
-    CustomerName     = var.customer_name
-    ArchitectureType = var.architecture_type
-    PlanTier         = var.plan_tier
+  # Customer-specific tags
+  customer_tags = local.has_customer ? {
+    CustomerName = var.customer_name
+    PlanTier     = var.plan_tier
+  } : {}
+
+  # Project-specific tags
+  project_tags = local.has_project ? {
+    ProjectName = var.project_name
   } : {}
 
   # Merge all tags
   merged_tags = merge(
     local.base_tags,
     local.customer_tags,
+    local.project_tags,
     var.tags
   )
 }
