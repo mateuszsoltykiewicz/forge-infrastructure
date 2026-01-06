@@ -8,6 +8,12 @@
 # Customer Context Variables
 # ------------------------------------------------------------------------------
 
+variable "create" {
+  description = "Whether to create the SSM parameter. Set to false to skip resource creation."
+  type        = bool
+  default     = true
+}
+
 variable "customer_name" {
   description = "Name of the customer (used in resource naming, e.g., 'forge', 'acme-corp')"
   type        = string

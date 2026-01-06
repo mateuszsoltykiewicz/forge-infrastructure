@@ -9,6 +9,8 @@
 # ------------------------------------------------------------------------------
 
 resource "aws_ssm_parameter" "this" {
+  count = var.create ? 1 : 0
+
   name            = local.parameter_full_path
   description     = var.parameter_description != "" ? var.parameter_description : "Parameter ${local.parameter_display_name} for ${var.resource_type}"
   type            = var.parameter_type

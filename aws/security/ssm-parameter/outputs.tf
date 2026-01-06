@@ -10,17 +10,17 @@
 
 output "parameter_name" {
   description = "Full name (path) of the parameter"
-  value       = aws_ssm_parameter.this.name
+  value       = var.create ? aws_ssm_parameter.this[0].name : null
 }
 
 output "parameter_arn" {
   description = "ARN of the parameter"
-  value       = aws_ssm_parameter.this.arn
+  value       = var.create ? aws_ssm_parameter.this[0].arn : null
 }
 
 output "parameter_version" {
   description = "Version of the parameter"
-  value       = aws_ssm_parameter.this.version
+  value       = var.create ? aws_ssm_parameter.this[0].version : null
 }
 
 # ------------------------------------------------------------------------------
@@ -29,17 +29,17 @@ output "parameter_version" {
 
 output "parameter_type" {
   description = "Type of the parameter"
-  value       = aws_ssm_parameter.this.type
+  value       = var.create ? aws_ssm_parameter.this[0].type : null
 }
 
 output "parameter_tier" {
   description = "Tier of the parameter"
-  value       = aws_ssm_parameter.this.tier
+  value       = var.create ? aws_ssm_parameter.this[0].tier : null
 }
 
 output "parameter_data_type" {
   description = "Data type of the parameter"
-  value       = aws_ssm_parameter.this.data_type
+  value       = var.create ? aws_ssm_parameter.this[0].data_type : null
 }
 
 # ------------------------------------------------------------------------------
@@ -48,7 +48,7 @@ output "parameter_data_type" {
 
 output "parameter_value" {
   description = "Value of the parameter (sensitive)"
-  value       = aws_ssm_parameter.this.value
+  value       = var.create ? aws_ssm_parameter.this[0].value : null
   sensitive   = true
 }
 
@@ -58,7 +58,7 @@ output "parameter_value" {
 
 output "kms_key_id" {
   description = "KMS key ID used for SecureString encryption"
-  value       = aws_ssm_parameter.this.key_id
+  value       = var.create ? aws_ssm_parameter.this[0].key_id : null
 }
 
 # ------------------------------------------------------------------------------
@@ -67,5 +67,5 @@ output "kms_key_id" {
 
 output "parameter_insecure_value" {
   description = "Insecure value of the parameter (only for non-SecureString types)"
-  value       = var.parameter_type != "SecureString" ? aws_ssm_parameter.this.insecure_value : null
+  value       = var.create && var.parameter_type != "SecureString" ? aws_ssm_parameter.this[0].insecure_value : null
 }
