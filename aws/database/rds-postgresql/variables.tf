@@ -6,8 +6,14 @@
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# Customer Context (Required for Customer-Aware Naming)
+# Multi-Tenant Context
 # ------------------------------------------------------------------------------
+
+variable "workspace" {
+  description = "Workspace name for VPC discovery (e.g., forge-platform)"
+  type        = string
+  default     = "forge-platform"
+}
 
 variable "customer_id" {
   description = "Customer identifier (empty for shared infrastructure)"
@@ -21,15 +27,10 @@ variable "customer_name" {
   default     = ""
 }
 
-variable "architecture_type" {
-  description = "Architecture deployment type: shared, dedicated_local, or dedicated_regional"
+variable "project_name" {
+  description = "Project name for project-level isolation (empty for customer-level or shared)"
   type        = string
-  default     = "shared"
-
-  validation {
-    condition     = contains(["shared", "dedicated_local", "dedicated_regional"], var.architecture_type)
-    error_message = "Architecture type must be one of: shared, dedicated_local, or dedicated_regional."
-  }
+  default     = ""
 }
 
 variable "plan_tier" {
@@ -50,11 +51,6 @@ variable "environment" {
     condition     = contains(["production", "staging", "development"], var.environment)
     error_message = "Environment must be one of: production, staging, or development."
   }
-}
-
-variable "aws_region" {
-  description = "AWS region where the RDS instance will be deployed"
-  type        = string
 }
 
 variable "identifier_override" {
@@ -175,28 +171,36 @@ variable "port" {
 }
 
 # ------------------------------------------------------------------------------
-# Network Configuration
+# Network Configuration (Auto-Discovery)
 # ------------------------------------------------------------------------------
 
-variable "vpc_id" {
-  description = "VPC ID where the RDS instance will be deployed"
-  type        = string
-}
-
-variable "subnet_ids" {
-  description = "Subnet IDs for the DB subnet group (must span at least 2 AZs)"
-  type        = list(string)
+variable "rds_subnet_az_count" {
+  description = "Number of AZs for RDS subnets (2-3 for Multi-AZ)"
+  type        = number
+  default     = 2
 
   validation {
-    condition     = length(var.subnet_ids) >= 2
-    error_message = "DB subnet group must span at least 2 availability zones."
+    condition     = var.rds_subnet_az_count >= 2 && var.rds_subnet_az_count <= 3
+    error_message = "RDS subnet AZ count must be between 2 and 3."
   }
 }
 
-variable "security_group_ids" {
-  description = "Security group IDs to attach to the RDS instance"
-  type        = list(string)
-  default     = []
+variable "rds_subnet_newbits" {
+  description = "Number of bits to add to VPC CIDR for RDS subnets (e.g., 8 for /24 subnets from /16 VPC)"
+  type        = number
+  default     = 8
+}
+
+variable "rds_subnet_netnum_start" {
+  description = "Starting number for RDS subnet CIDR calculation"
+  type        = number
+  default     = 50
+}
+
+variable "eks_cluster_name" {
+  description = "EKS cluster name for security group integration (empty = auto-discover)"
+  type        = string
+  default     = ""
 }
 
 variable "publicly_accessible" {
@@ -281,10 +285,21 @@ variable "storage_encrypted" {
   default     = true
 }
 
-variable "kms_key_id" {
-  description = "KMS key ID for encryption (if empty, uses default RDS key)"
-  type        = string
-  default     = ""
+variable "enable_kms_key_rotation" {
+  description = "Enable automatic KMS key rotation"
+  type        = bool
+  default     = true
+}
+
+variable "kms_deletion_window_in_days" {
+  description = "KMS key deletion window in days"
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.kms_deletion_window_in_days >= 7 && var.kms_deletion_window_in_days <= 30
+    error_message = "KMS deletion window must be between 7 and 30 days."
+  }
 }
 
 variable "iam_database_authentication_enabled" {

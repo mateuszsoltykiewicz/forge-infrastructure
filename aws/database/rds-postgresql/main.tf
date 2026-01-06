@@ -23,7 +23,7 @@ resource "random_password" "master" {
 
 resource "aws_db_subnet_group" "main" {
   name       = "${local.db_identifier}-subnet-group"
-  subnet_ids = var.subnet_ids
+  subnet_ids = aws_subnet.rds_private[*].id
 
   tags = merge(
     local.merged_tags,
@@ -31,6 +31,8 @@ resource "aws_db_subnet_group" "main" {
       Name = "${local.db_identifier}-subnet-group"
     }
   )
+
+  depends_on = [aws_subnet.rds_private]
 }
 
 # ------------------------------------------------------------------------------
@@ -88,7 +90,7 @@ resource "aws_db_instance" "main" {
 
   # Network Configuration
   db_subnet_group_name   = aws_db_subnet_group.main.name
-  vpc_security_group_ids = var.security_group_ids
+  vpc_security_group_ids = [aws_security_group.rds.id]
   publicly_accessible    = var.publicly_accessible
 
   # High Availability
@@ -96,16 +98,16 @@ resource "aws_db_instance" "main" {
   availability_zone = var.multi_az ? null : (var.availability_zone != "" ? var.availability_zone : null)
 
   # Backup Configuration
-  backup_retention_period = var.backup_retention_period
-  backup_window           = var.backup_window
-  maintenance_window      = var.maintenance_window
-  skip_final_snapshot     = var.skip_final_snapshot
+  backup_retention_period   = var.backup_retention_period
+  backup_window             = var.backup_window
+  maintenance_window        = var.maintenance_window
+  skip_final_snapshot       = var.skip_final_snapshot
   final_snapshot_identifier = local.final_snapshot_identifier
   copy_tags_to_snapshot     = var.copy_tags_to_snapshot
 
   # Security Configuration
   storage_encrypted                   = var.storage_encrypted
-  kms_key_id                          = var.kms_key_id != "" ? var.kms_key_id : null
+  kms_key_id                          = aws_kms_key.rds.arn
   iam_database_authentication_enabled = var.iam_database_authentication_enabled
   deletion_protection                 = var.deletion_protection
 
@@ -117,7 +119,7 @@ resource "aws_db_instance" "main" {
   # Performance Insights
   performance_insights_enabled          = var.performance_insights_enabled
   performance_insights_retention_period = var.performance_insights_enabled ? var.performance_insights_retention_period : null
-  performance_insights_kms_key_id       = var.performance_insights_enabled && var.kms_key_id != "" ? var.kms_key_id : null
+  performance_insights_kms_key_id       = var.performance_insights_enabled ? aws_kms_key.rds.arn : null
 
   # Parameter Group
   parameter_group_name = aws_db_parameter_group.main.name
@@ -135,6 +137,13 @@ resource "aws_db_instance" "main" {
     }
   )
 
+  depends_on = [
+    aws_kms_key.rds,
+    aws_security_group.rds,
+    aws_cloudwatch_log_group.postgresql,
+    aws_cloudwatch_log_group.upgrade
+  ]
+
   lifecycle {
     ignore_changes = [
       # Ignore password changes after initial creation
@@ -146,23 +155,29 @@ resource "aws_db_instance" "main" {
 }
 
 # ------------------------------------------------------------------------------
-# Secrets Manager Secret (for master password)
+# SSM Parameter Store (for master password and endpoint)
 # ------------------------------------------------------------------------------
 
-resource "aws_secretsmanager_secret" "master_password" {
-  name = "${local.db_identifier}-master-password"
+# Store RDS endpoint in SSM
+resource "aws_ssm_parameter" "rds_endpoint" {
+  name  = "/${var.environment}/${local.db_identifier}/endpoint"
+  type  = "String"
+  value = aws_db_instance.main.endpoint
 
   tags = merge(
     local.merged_tags,
     {
-      Name = "${local.db_identifier}-master-password"
+      Name = "${local.db_identifier}-endpoint"
     }
   )
 }
 
-resource "aws_secretsmanager_secret_version" "master_password" {
-  secret_id = aws_secretsmanager_secret.master_password.id
-  secret_string = jsonencode({
+# Store master password in SSM (SecureString with KMS encryption)
+resource "aws_ssm_parameter" "rds_master_password" {
+  name   = "/${var.environment}/${local.db_identifier}/master-password"
+  type   = "SecureString"
+  key_id = aws_kms_key.rds.arn
+  value = jsonencode({
     username = var.master_username
     password = local.master_password
     engine   = "postgres"
@@ -170,6 +185,13 @@ resource "aws_secretsmanager_secret_version" "master_password" {
     port     = var.port
     dbname   = var.database_name
   })
+
+  tags = merge(
+    local.merged_tags,
+    {
+      Name = "${local.db_identifier}-master-password"
+    }
+  )
 }
 
 # ------------------------------------------------------------------------------
