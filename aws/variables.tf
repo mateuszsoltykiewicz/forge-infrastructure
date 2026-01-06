@@ -257,13 +257,13 @@ variable "enable_vpn" {
   default     = false
 }
 
-variable "vpn_client_cidr" {
+variable "vpn_client_cidr_block" {
   description = "CIDR block for VPN clients (e.g., '172.16.0.0/22')"
   type        = string
   default     = "172.16.0.0/22"
 
   validation {
-    condition     = can(cidrnetmask(var.vpn_client_cidr))
+    condition     = can(cidrnetmask(var.vpn_client_cidr_block))
     error_message = "VPN client CIDR must be a valid CIDR block."
   }
 }
@@ -272,6 +272,86 @@ variable "vpn_dns_servers" {
   description = "List of DNS servers for VPN clients (defaults to VPC DNS)"
   type        = list(string)
   default     = []
+}
+
+variable "vpn_split_tunnel" {
+  description = "Enable split tunneling (only VPC traffic routes through VPN)"
+  type        = bool
+  default     = true
+}
+
+variable "vpn_transport_protocol" {
+  description = "VPN transport protocol (udp or tcp)"
+  type        = string
+  default     = "udp"
+
+  validation {
+    condition     = contains(["udp", "tcp"], var.vpn_transport_protocol)
+    error_message = "VPN transport protocol must be 'udp' or 'tcp'."
+  }
+}
+
+variable "vpn_session_timeout_hours" {
+  description = "VPN session timeout in hours (8-24)"
+  type        = number
+  default     = 24
+
+  validation {
+    condition     = var.vpn_session_timeout_hours >= 8 && var.vpn_session_timeout_hours <= 24
+    error_message = "VPN session timeout must be between 8 and 24 hours."
+  }
+}
+
+variable "vpn_authentication_type" {
+  description = "VPN authentication type (certificate-authentication, directory-service-authentication, federated-authentication)"
+  type        = string
+  default     = "certificate-authentication"
+
+  validation {
+    condition     = contains(["certificate-authentication", "directory-service-authentication", "federated-authentication"], var.vpn_authentication_type)
+    error_message = "Invalid VPN authentication type."
+  }
+}
+
+variable "vpn_server_certificate_arn" {
+  description = "ARN of server certificate for VPN (mutual TLS) - required if enable_vpn = true"
+  type        = string
+  default     = null
+}
+
+variable "vpn_client_root_certificate_arn" {
+  description = "ARN of client root certificate for VPN (mutual TLS) - required if enable_vpn = true"
+  type        = string
+  default     = null
+}
+
+variable "vpn_authorize_all_groups" {
+  description = "Authorize all users to access VPN (set false for Active Directory group filtering)"
+  type        = bool
+  default     = true
+}
+
+variable "vpn_enable_connection_logs" {
+  description = "Enable CloudWatch Logs for VPN connections"
+  type        = bool
+  default     = true
+}
+
+variable "vpn_cloudwatch_log_retention_days" {
+  description = "VPN CloudWatch Logs retention in days"
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653], var.vpn_cloudwatch_log_retention_days)
+    error_message = "Invalid CloudWatch Logs retention period."
+  }
+}
+
+variable "vpn_enable_self_service_portal" {
+  description = "Enable VPN self-service portal for client configuration downloads"
+  type        = bool
+  default     = false
 }
 
 # ------------------------------------------------------------------------------

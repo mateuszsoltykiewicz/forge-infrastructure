@@ -668,6 +668,61 @@ module "vpc_endpoint_kms" {
   depends_on = [module.vpc]
 }
 
+# ------------------------------------------------------------------------------
+# AWS Client VPN Module (Optional - Private EKS Access)
+# ------------------------------------------------------------------------------
+
+module "client_vpn" {
+  count  = var.enable_vpn ? 1 : 0
+  source = "./network/client-vpn"
+
+  # Multi-tenant configuration
+  workspace     = var.workspace
+  environment   = "shared"
+  customer_name = var.customer_name
+  project_name  = var.project_name
+
+  # VPN Configuration
+  client_cidr_block = var.vpn_client_cidr_block
+  dns_servers       = var.vpn_dns_servers
+  split_tunnel      = var.vpn_split_tunnel
+  transport_protocol = var.vpn_transport_protocol
+  session_timeout_hours = var.vpn_session_timeout_hours
+
+  # Authentication (Mutual TLS by default)
+  authentication_type           = var.vpn_authentication_type
+  server_certificate_arn        = var.vpn_server_certificate_arn
+  client_root_certificate_arn   = var.vpn_client_root_certificate_arn
+
+  # Network Configuration
+  vpc_id         = module.vpc.vpc_id
+  subnet_ids     = module.eks.eks_private_subnet_ids
+  vpc_cidr_block = var.vpc_cidr
+
+  # Authorization Rules
+  authorize_all_groups = var.vpn_authorize_all_groups
+
+  # Connection Logging
+  enable_connection_logs          = var.vpn_enable_connection_logs
+  cloudwatch_log_retention_days   = var.vpn_cloudwatch_log_retention_days
+
+  # Security Group
+  create_security_group = true
+
+  # Self-Service Portal
+  enable_self_service_portal = var.vpn_enable_self_service_portal
+
+  tags = merge(
+    local.common_tags,
+    {
+      Component = "VPN"
+      Service   = "AWS-Client-VPN"
+    }
+  )
+
+  depends_on = [module.vpc, module.eks]
+}
+
 # ==============================================================================
 # Deployment Architecture Summary:
 # ==============================================================================
@@ -677,17 +732,20 @@ module "vpc_endpoint_kms" {
 # - RDS: 1 production instance (shared by staging/dev)
 # - Redis: 1 production instance (shared by staging/dev)
 # - VPC Endpoints: 12 endpoints (disabled by default, enable_vpc_endpoints = false)
+# - AWS Client VPN: Optional (disabled by default, enable_vpn = false)
 #
 # Cost Optimization:
 # - Sharing RDS/Redis saves ~$600/month
 # - Single EKS cluster saves ~$144/month (2 extra control planes)
 # - VPC Endpoints disabled: $0/month (enable for +$715/month when using VPN)
+# - AWS Client VPN disabled: $0/month (enable for +$73/month base + $36/month per user)
 # - Total estimated cost: ~$1,000/month (public endpoint mode)
 #
-# Private Deployment (Future):
+# Private Deployment (Phase 2):
 # - Set enable_vpc_endpoints = true
 # - Set enable_vpn = true
 # - Set eks_endpoint_public_access = false
-# - Total cost with VPN + endpoints: ~$1,788/month
+# - Generate VPN certificates: scripts/generate-vpn-certificates.sh
+# - Total cost with VPN + endpoints: ~$1,788/month (1 VPN user)
 # ==============================================================================
 
