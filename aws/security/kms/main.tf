@@ -9,6 +9,8 @@
 # ------------------------------------------------------------------------------
 
 resource "aws_kms_key" "main" {
+  count = var.create ? 1 : 0
+
   description              = var.key_description
   key_usage                = var.key_usage
   customer_master_key_spec = var.customer_master_key_spec
@@ -46,10 +48,10 @@ resource "aws_kms_key" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_kms_alias" "main" {
-  count = var.create_alias ? 1 : 0
+  count = var.create && var.create_alias ? 1 : 0
 
   name          = "alias/${local.alias_name}"
-  target_key_id = aws_kms_key.main.key_id
+  target_key_id = aws_kms_key.main[0].key_id
 }
 
 # ------------------------------------------------------------------------------
@@ -57,10 +59,10 @@ resource "aws_kms_alias" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_kms_grant" "main" {
-  for_each = { for grant in var.grants : grant.name => grant }
+  for_each = var.create ? { for grant in var.grants : grant.name => grant } : {}
 
   name              = each.value.name
-  key_id            = aws_kms_key.main.key_id
+  key_id            = aws_kms_key.main[0].key_id
   grantee_principal = each.value.grantee_principal
   operations        = each.value.operations
 

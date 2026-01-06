@@ -10,27 +10,27 @@
 
 output "key_id" {
   description = "The globally unique identifier for the key"
-  value       = aws_kms_key.main.key_id
+  value       = var.create ? aws_kms_key.main[0].key_id : null
 }
 
 output "key_arn" {
   description = "The ARN of the key"
-  value       = aws_kms_key.main.arn
+  value       = var.create ? aws_kms_key.main[0].arn : null
 }
 
 output "key_multi_region" {
   description = "Whether the key is a multi-region key"
-  value       = aws_kms_key.main.multi_region
+  value       = var.create ? aws_kms_key.main[0].multi_region : null
 }
 
 output "key_rotation_enabled" {
   description = "Whether automatic key rotation is enabled"
-  value       = aws_kms_key.main.enable_key_rotation
+  value       = var.create ? aws_kms_key.main[0].enable_key_rotation : null
 }
 
 output "key_rotation_period_in_days" {
   description = "The rotation period in days"
-  value       = aws_kms_key.main.rotation_period_in_days
+  value       = var.create ? aws_kms_key.main[0].rotation_period_in_days : null
 }
 
 # ------------------------------------------------------------------------------
@@ -39,17 +39,17 @@ output "key_rotation_period_in_days" {
 
 output "alias_name" {
   description = "The display name of the alias"
-  value       = var.create_alias ? aws_kms_alias.main[0].name : null
+  value       = var.create && var.create_alias ? aws_kms_alias.main[0].name : null
 }
 
 output "alias_arn" {
   description = "The ARN of the alias"
-  value       = var.create_alias ? aws_kms_alias.main[0].arn : null
+  value       = var.create && var.create_alias ? aws_kms_alias.main[0].arn : null
 }
 
 output "alias_target_key_arn" {
   description = "The ARN of the target key"
-  value       = var.create_alias ? aws_kms_alias.main[0].target_key_arn : null
+  value       = var.create && var.create_alias ? aws_kms_alias.main[0].target_key_arn : null
 }
 
 # ------------------------------------------------------------------------------
@@ -58,12 +58,12 @@ output "alias_target_key_arn" {
 
 output "grant_ids" {
   description = "Map of grant names to grant IDs"
-  value       = { for k, v in aws_kms_grant.main : k => v.grant_id }
+  value       = var.create ? { for k, v in aws_kms_grant.main : k => v.grant_id } : {}
 }
 
 output "grant_tokens" {
   description = "Map of grant names to grant tokens"
-  value       = { for k, v in aws_kms_grant.main : k => v.grant_token }
+  value       = var.create ? { for k, v in aws_kms_grant.main : k => v.grant_token } : {}
   sensitive   = true
 }
 
@@ -83,5 +83,5 @@ output "key_usage" {
 
 output "tags" {
   description = "All tags applied to the key"
-  value       = aws_kms_key.main.tags_all
+  value       = var.create ? aws_kms_key.main[0].tags_all : {}
 }
