@@ -76,13 +76,13 @@ locals {
   }
 
   # Merge all tags: base + customer + project + customer_id + plan_tier + vpc + user-provided
-  common_tags = merge(
+  merged_tags = merge(
     local.base_tags,
     local.customer_tags,
     local.project_tags,
     local.customer_id_tags,
     local.plan_tier_tags,
-    var.common_tags
+    var.merged_tags
   )
 }
 

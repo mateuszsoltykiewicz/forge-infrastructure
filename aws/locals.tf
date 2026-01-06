@@ -177,7 +177,7 @@ locals {
   # Common Tags
   # ------------------------------------------------------------------------------
 
-  common_tags = merge(
+  merged_tags = merge(
     {
       ManagedBy  = "Terraform"
       Workspace  = var.workspace

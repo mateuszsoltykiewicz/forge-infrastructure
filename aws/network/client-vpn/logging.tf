@@ -17,7 +17,7 @@ resource "aws_cloudwatch_log_group" "vpn_connection_logs" {
   kms_key_id        = var.cloudwatch_kms_key_arn
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Name        = local.log_group_name
       Description = "VPN connection logs for ${local.vpn_name}"

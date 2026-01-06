@@ -23,7 +23,7 @@ module "vpc" {
   customer_name = var.customer_name
   project_name  = var.project_name
 
-  common_tags = local.common_tags
+  merged_tags = local.merged_tags
 }
 
 # ------------------------------------------------------------------------------
@@ -49,7 +49,7 @@ module "eks" {
   system_node_group_max_size       = var.eks_node_max_size
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component = "EKS"
     }
@@ -113,7 +113,7 @@ module "alb" {
   }
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component   = "ALB"
       Environment = each.key
@@ -151,7 +151,7 @@ module "rds_production" {
   backup_retention_period = 30
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component   = "RDS"
       Environment = "production"
@@ -183,7 +183,7 @@ module "rds_staging" {
   backup_retention_period = 7
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component   = "RDS"
       Environment = "staging"
@@ -215,7 +215,7 @@ module "rds_development" {
   backup_retention_period = 3
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component   = "RDS"
       Environment = "development"
@@ -253,7 +253,7 @@ module "redis_production" {
   multi_az_enabled           = true
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component   = "Redis"
       Environment = "production"
@@ -286,7 +286,7 @@ module "redis_staging" {
   multi_az_enabled           = false
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component   = "Redis"
       Environment = "staging"
@@ -319,7 +319,7 @@ module "redis_development" {
   multi_az_enabled           = false
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component   = "Redis"
       Environment = "development"
@@ -350,7 +350,7 @@ module "vpc_endpoint_s3" {
   route_table_ids = module.eks.private_route_table_ids
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component = "VPC-Endpoints"
       Service   = "S3"
@@ -378,7 +378,7 @@ module "vpc_endpoint_ecr_api" {
   private_dns_enabled = true
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component = "VPC-Endpoints"
       Service   = "ECR-API"
@@ -406,7 +406,7 @@ module "vpc_endpoint_ecr_dkr" {
   private_dns_enabled = true
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component = "VPC-Endpoints"
       Service   = "ECR-DKR"
@@ -434,7 +434,7 @@ module "vpc_endpoint_ec2" {
   private_dns_enabled = true
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component = "VPC-Endpoints"
       Service   = "EC2"
@@ -462,7 +462,7 @@ module "vpc_endpoint_ec2messages" {
   private_dns_enabled = true
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component = "VPC-Endpoints"
       Service   = "EC2Messages"
@@ -490,7 +490,7 @@ module "vpc_endpoint_sts" {
   private_dns_enabled = true
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component = "VPC-Endpoints"
       Service   = "STS"
@@ -518,7 +518,7 @@ module "vpc_endpoint_autoscaling" {
   private_dns_enabled = true
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component = "VPC-Endpoints"
       Service   = "Autoscaling"
@@ -546,7 +546,7 @@ module "vpc_endpoint_elasticloadbalancing" {
   private_dns_enabled = true
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component = "VPC-Endpoints"
       Service   = "ELB"
@@ -574,7 +574,7 @@ module "vpc_endpoint_logs" {
   private_dns_enabled = true
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component = "VPC-Endpoints"
       Service   = "CloudWatch-Logs"
@@ -602,7 +602,7 @@ module "vpc_endpoint_monitoring" {
   private_dns_enabled = true
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component = "VPC-Endpoints"
       Service   = "CloudWatch-Monitoring"
@@ -630,7 +630,7 @@ module "vpc_endpoint_ssm" {
   private_dns_enabled = true
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component = "VPC-Endpoints"
       Service   = "SSM"
@@ -658,7 +658,7 @@ module "vpc_endpoint_kms" {
   private_dns_enabled = true
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component = "VPC-Endpoints"
       Service   = "KMS"
@@ -713,7 +713,7 @@ module "client_vpn" {
   enable_self_service_portal = var.vpn_enable_self_service_portal
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Component = "VPN"
       Service   = "AWS-Client-VPN"

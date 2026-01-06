@@ -45,9 +45,9 @@ locals {
   }
 
   # Combined tags
-  common_tags = merge(
+  merged_tags = merge(
     local.base_tags,
     local.customer_tags,
-    var.common_tags
+    var.merged_tags
   )
 }

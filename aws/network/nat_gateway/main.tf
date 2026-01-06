@@ -62,7 +62,7 @@ resource "aws_eip" "nat" {
   domain = "vpc"
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     local.nat_tags,
     {
       Name    = "${local.nat_name_prefix}-eip-${count.index + 1}"
@@ -97,7 +97,7 @@ resource "aws_nat_gateway" "this" {
   subnet_id = local.nat_subnets[count.index]
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     local.nat_tags,
     {
       Name      = "${local.nat_name_prefix}-${count.index + 1}"

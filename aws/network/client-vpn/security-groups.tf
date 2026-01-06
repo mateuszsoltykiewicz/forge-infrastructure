@@ -17,7 +17,7 @@ resource "aws_security_group" "vpn_access" {
   vpc_id      = var.vpc_id
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Name = local.security_group_name
     }
@@ -43,7 +43,7 @@ resource "aws_vpc_security_group_egress_rule" "vpc_all" {
   cidr_ipv4   = var.vpc_cidr_block
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Name = "${local.security_group_name}-vpc-all"
     }

@@ -10,7 +10,7 @@ resource "aws_vpc" "this" {
   enable_dns_support   = true           # Enables DNS resolution within the VPC
   enable_dns_hostnames = true           # Enables DNS hostnames for instances
 
-  tags = merge(local.common_tags, local.vpc_tags, {
+  tags = merge(local.merged_tags, local.vpc_tags, {
     LastModified = plantimestamp()
   })
 

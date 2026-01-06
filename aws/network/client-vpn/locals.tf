@@ -52,7 +52,7 @@ locals {
   # Tagging
   # ------------------------------------------------------------------------------
 
-  common_tags = merge(
+  merged_tags = merge(
     var.tags,
     {
       Workspace   = var.workspace

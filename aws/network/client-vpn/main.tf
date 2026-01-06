@@ -34,7 +34,7 @@ resource "aws_iam_role" "vpn_cloudwatch_logs" {
   })
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Name = "${local.vpn_name}-cloudwatch-logs-role"
     }
@@ -126,7 +126,7 @@ resource "aws_ec2_client_vpn_endpoint" "this" {
   # }
 
   tags = merge(
-    local.common_tags,
+    local.merged_tags,
     {
       Name = local.vpn_name
     }

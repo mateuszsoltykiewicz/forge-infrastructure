@@ -185,7 +185,7 @@ variable "plan_tier" {
 # Additional Tags (Optional)
 # ------------------------------------------------------------------------------
 
-variable "common_tags" {
+variable "merged_tags" {
   description = "Additional tags to apply to all resources"
   type        = map(string)
   default     = {}

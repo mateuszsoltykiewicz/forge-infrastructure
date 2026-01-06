@@ -76,7 +76,7 @@ variable "plan_tier" {
 # Tagging Variables
 # ------------------------------------------------------------------------------
 
-variable "common_tags" {
+variable "merged_tags" {
   type        = map(string)
   description = "Additional tags to apply to the VPC for cost allocation, automation, and compliance."
   default     = {}
