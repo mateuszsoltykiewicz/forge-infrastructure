@@ -3,6 +3,8 @@
 # ========================================
 
 resource "aws_acm_certificate" "main" {
+  count = var.create ? 1 : 0
+
   domain_name               = var.domain_name
   subject_alternative_names = var.subject_alternative_names
   validation_method         = var.validation_method
@@ -42,8 +44,8 @@ resource "aws_acm_certificate" "main" {
 
 # Create validation records in Route 53
 resource "aws_route53_record" "validation" {
-  for_each = local.should_create_dns_records ? {
-    for dvo in aws_acm_certificate.main.domain_validation_options : dvo.domain_name => {
+  for_each = var.create && local.should_create_dns_records ? {
+    for dvo in aws_acm_certificate.main[0].domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
       type   = dvo.resource_record_type
       record = dvo.resource_record_value
@@ -70,9 +72,9 @@ resource "aws_route53_record" "validation" {
 
 # Wait for certificate validation to complete
 resource "aws_acm_certificate_validation" "main" {
-  count = var.wait_for_validation && local.is_dns_validation && local.should_create_dns_records ? 1 : 0
+  count = var.create && var.wait_for_validation && local.is_dns_validation && local.should_create_dns_records ? 1 : 0
 
-  certificate_arn         = aws_acm_certificate.main.arn
+  certificate_arn         = aws_acm_certificate.main[0].arn
   validation_record_fqdns = [for record in aws_route53_record.validation : record.fqdn]
 
   timeouts {
@@ -100,7 +102,7 @@ resource "aws_acm_certificate_validation" "main" {
 # Note: ACM automatically renews certificates ~60 days before expiration
 # This is a safety net for monitoring
 resource "aws_cloudwatch_metric_alarm" "certificate_expiration" {
-  count = var.environment == "production" ? 1 : 0
+  count = var.create && var.environment == "production" ? 1 : 0
 
   alarm_name          = "${local.certificate_name}-expiration"
   alarm_description   = "ACM certificate ${var.domain_name} is approaching expiration"
@@ -114,7 +116,7 @@ resource "aws_cloudwatch_metric_alarm" "certificate_expiration" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    CertificateArn = aws_acm_certificate.main.arn
+    CertificateArn = aws_acm_certificate.main[0].arn
   }
 
   alarm_actions = [] # Add SNS topic ARN for notifications
