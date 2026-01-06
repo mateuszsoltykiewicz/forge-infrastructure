@@ -49,6 +49,12 @@ variable "architecture_type" {
   }
 }
 
+variable "project_name" {
+  description = "Project name for project-level isolation (empty for customer-level or shared)"
+  type        = string
+  default     = ""
+}
+
 variable "plan_tier" {
   description = "Customer plan tier: basic, pro, enterprise, or platform"
   type        = string

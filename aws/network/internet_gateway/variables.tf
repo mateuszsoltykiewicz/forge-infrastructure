@@ -97,6 +97,12 @@ variable "customer_name" {
   default     = null
 }
 
+variable "project_name" {
+  description = "Project name for project-level isolation"
+  type        = string
+  default     = null
+}
+
 variable "architecture_type" {
   description = "Architecture type: 'shared' (multi-tenant), 'dedicated_local' (single region), 'dedicated_regional' (multi-region)"
   type        = string

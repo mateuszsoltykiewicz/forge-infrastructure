@@ -35,6 +35,12 @@ variable "project_name" {
   default     = null
 }
 
+variable "architecture_type" {
+  description = "Architecture type (shared, dedicated_local, dedicated_regional)"
+  type        = string
+  default     = "shared"
+}
+
 variable "plan_tier" {
   description = "Customer plan tier: basic, pro, enterprise, or platform"
   type        = string

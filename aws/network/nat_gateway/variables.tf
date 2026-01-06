@@ -162,6 +162,12 @@ variable "customer_name" {
   default     = null
 }
 
+variable "customer_id" {
+  description = "Customer ID (null for shared infrastructure)"
+  type        = string
+  default     = null
+}
+
 variable "project_name" {
   description = "Project name for multi-tenant deployments"
   type        = string
@@ -172,6 +178,12 @@ variable "plan_tier" {
   description = "Customer plan tier (e.g., 'trial', 'basic', 'pro', 'enterprise')"
   type        = string
   default     = null
+}
+
+variable "architecture_type" {
+  description = "Architecture type (shared, dedicated_local, dedicated_regional)"
+  type        = string
+  default     = "shared"
 }
 
 # ------------------------------------------------------------------------------
