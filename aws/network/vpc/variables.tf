@@ -82,6 +82,55 @@ variable "merged_tags" {
   default     = {}
 }
 
+# ------------------------------------------------------------------------------
+# VPC Flow Logs Configuration
+# ------------------------------------------------------------------------------
+
+variable "enable_flow_logs" {
+  description = "Enable VPC Flow Logs for network traffic monitoring and security analysis"
+  type        = bool
+  default     = true
+}
+
+variable "flow_logs_traffic_type" {
+  description = "Type of traffic to capture: ALL (all traffic), ACCEPT (accepted traffic), REJECT (rejected traffic)"
+  type        = string
+  default     = "ALL"
+
+  validation {
+    condition     = contains(["ALL", "ACCEPT", "REJECT"], var.flow_logs_traffic_type)
+    error_message = "Traffic type must be one of: ALL, ACCEPT, REJECT."
+  }
+}
+
+variable "flow_logs_retention_days" {
+  description = "CloudWatch Logs retention period for flow logs in days"
+  type        = number
+  default     = 7
+
+  validation {
+    condition     = contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653], var.flow_logs_retention_days)
+    error_message = "Retention must be a valid CloudWatch value."
+  }
+}
+
+variable "flow_logs_kms_key_id" {
+  description = "KMS key ID for encrypting flow logs (optional, recommended for production)"
+  type        = string
+  default     = null
+}
+
+variable "flow_logs_aggregation_interval" {
+  description = "Maximum interval for flow log aggregation in seconds (60 or 600)"
+  type        = number
+  default     = 600
+
+  validation {
+    condition     = contains([60, 600], var.flow_logs_aggregation_interval)
+    error_message = "Aggregation interval must be 60 or 600 seconds."
+  }
+}
+
 # ==============================================================================
 # Multi-Tenancy Patterns:
 # ==============================================================================

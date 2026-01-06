@@ -69,6 +69,30 @@ output "enable_dns_hostnames" {
   description = "Whether DNS hostnames are enabled in the VPC."
 }
 
+# ------------------------------------------------------------------------------
+# VPC Flow Logs
+# ------------------------------------------------------------------------------
+
+output "flow_log_id" {
+  value       = var.enable_flow_logs ? aws_flow_log.main[0].id : null
+  description = "The ID of the VPC Flow Log (null if flow logs disabled)."
+}
+
+output "flow_log_arn" {
+  value       = var.enable_flow_logs ? aws_flow_log.main[0].arn : null
+  description = "The ARN of the VPC Flow Log (null if flow logs disabled)."
+}
+
+output "flow_logs_log_group_name" {
+  value       = var.enable_flow_logs ? aws_cloudwatch_log_group.flow_logs[0].name : null
+  description = "The CloudWatch Log Group name for flow logs (null if disabled)."
+}
+
+output "flow_logs_iam_role_arn" {
+  value       = var.enable_flow_logs ? aws_iam_role.flow_logs[0].arn : null
+  description = "The IAM role ARN used by VPC Flow Logs (null if disabled)."
+}
+
 # ==============================================================================
 # Multi-Tenant Outputs:
 # ==============================================================================
