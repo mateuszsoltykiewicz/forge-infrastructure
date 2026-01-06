@@ -46,7 +46,7 @@ resource "aws_kms_key" "rds" {
         Resource = "*"
         Condition = {
           StringEquals = {
-            "kms:ViaService" = "rds.${data.aws_region.current.name}.amazonaws.com"
+            "kms:ViaService" = "rds.${data.aws_region.current.id}.amazonaws.com"
           }
         }
       },
@@ -54,7 +54,7 @@ resource "aws_kms_key" "rds" {
         Sid    = "Allow CloudWatch Logs"
         Effect = "Allow"
         Principal = {
-          Service = "logs.${data.aws_region.current.name}.amazonaws.com"
+          Service = "logs.${data.aws_region.current.id}.amazonaws.com"
         }
         Action = [
           "kms:Encrypt",
@@ -67,7 +67,7 @@ resource "aws_kms_key" "rds" {
         Resource = "*"
         Condition = {
           ArnLike = {
-            "kms:EncryptionContext:aws:logs:arn" = "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/rds/*"
+            "kms:EncryptionContext:aws:logs:arn" = "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:log-group:/aws/rds/*"
           }
         }
       },

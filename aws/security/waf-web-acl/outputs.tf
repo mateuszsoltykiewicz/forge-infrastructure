@@ -271,6 +271,6 @@ output "waf_summary" {
     sampled_requests_enabled   = var.enable_sampled_requests
 
     # Tags
-    tags = local.all_tags
+    tags = local.merged_tags
   }
 }

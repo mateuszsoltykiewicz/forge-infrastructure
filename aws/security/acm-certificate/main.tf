@@ -29,7 +29,7 @@ resource "aws_acm_certificate" "main" {
   }
 
   tags = merge(
-    local.all_tags,
+    local.merged_tags,
     {
       Name = local.certificate_name
     }
@@ -119,5 +119,5 @@ resource "aws_cloudwatch_metric_alarm" "certificate_expiration" {
 
   alarm_actions = [] # Add SNS topic ARN for notifications
 
-  tags = local.all_tags
+  tags = local.merged_tags
 }

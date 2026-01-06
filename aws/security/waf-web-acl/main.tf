@@ -13,7 +13,7 @@ resource "aws_wafv2_ip_set" "allow_list" {
   addresses          = var.ip_allow_list
 
   tags = merge(
-    local.all_tags,
+    local.merged_tags,
     {
       Name = "${local.waf_name}-allow-list"
       Type = "allow-list"
@@ -36,7 +36,7 @@ resource "aws_wafv2_ip_set" "block_list" {
   addresses          = var.ip_block_list
 
   tags = merge(
-    local.all_tags,
+    local.merged_tags,
     {
       Name = "${local.waf_name}-block-list"
       Type = "block-list"
@@ -331,7 +331,7 @@ resource "aws_wafv2_web_acl" "main" {
     metric_name                = local.waf_name
   }
 
-  tags = local.all_tags
+  tags = local.merged_tags
 
   lifecycle {
     create_before_destroy = true
@@ -354,7 +354,7 @@ resource "aws_cloudwatch_log_group" "waf" {
   retention_in_days = var.cloudwatch_log_retention_days
 
   tags = merge(
-    local.all_tags,
+    local.merged_tags,
     {
       Name = local.log_group_name
       Type = "waf-logs"

@@ -46,19 +46,20 @@ locals {
 
   # Tagging strategy
   base_tags = {
-    ManagedBy        = "terraform"
-    Module           = "acm-certificate"
-    CustomerId       = var.customer_id
-    CustomerName     = var.customer_name
-    ArchitectureType = var.architecture_type
-    PlanTier         = var.plan_tier
-    Environment      = var.environment
-    Region           = var.region
+    ManagedBy   = "terraform"
+    Module      = "acm-certificate"
+    PlanTier    = var.plan_tier
+    Environment = var.environment
+    Region      = var.region
   }
 
-  customer_tags = var.architecture_type == "forge" ? {} : {
-    Customer = var.customer_name
-  }
+  customer_tags = local.has_customer ? {
+    CustomerName = var.customer_name
+  } : {}
+
+  project_tags = local.has_project ? {
+    ProjectName = var.project_name
+  } : {}
 
   certificate_tags = {
     Name             = local.certificate_name
@@ -68,9 +69,10 @@ locals {
     IsWildcard       = tostring(local.is_wildcard)
   }
 
-  all_tags = merge(
+  merged_tags = merge(
     local.base_tags,
     local.customer_tags,
+    local.project_tags,
     local.certificate_tags,
     var.tags
   )

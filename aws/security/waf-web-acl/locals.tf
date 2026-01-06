@@ -130,28 +130,30 @@ locals {
 
   # Tagging strategy
   base_tags = {
-    ManagedBy        = "terraform"
-    Module           = "waf-web-acl"
-    CustomerId       = var.customer_id
-    CustomerName     = var.customer_name
-    ArchitectureType = var.architecture_type
-    PlanTier         = var.plan_tier
-    Environment      = var.environment
-    Region           = var.region
+    ManagedBy   = "terraform"
+    Module      = "waf-web-acl"
+    PlanTier    = var.plan_tier
+    Environment = var.environment
+    Region      = var.region
   }
 
-  customer_tags = var.architecture_type == "forge" ? {} : {
-    Customer = var.customer_name
-  }
+  customer_tags = local.has_customer ? {
+    CustomerName = var.customer_name
+  } : {}
+
+  project_tags = local.has_project ? {
+    ProjectName = var.project_name
+  } : {}
 
   waf_tags = {
     Name  = local.waf_name
     Scope = var.scope
   }
 
-  all_tags = merge(
+  merged_tags = merge(
     local.base_tags,
     local.customer_tags,
+    local.project_tags,
     local.waf_tags,
     var.tags
   )

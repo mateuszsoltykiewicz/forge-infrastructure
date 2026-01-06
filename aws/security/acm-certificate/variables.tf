@@ -2,16 +2,6 @@
 # Customer Context Variables
 # ========================================
 
-variable "customer_id" {
-  description = "Unique identifier for the customer"
-  type        = string
-
-  validation {
-    condition     = can(regex("^[a-z0-9-]+$", var.customer_id))
-    error_message = "Customer ID must contain only lowercase letters, numbers, and hyphens."
-  }
-}
-
 variable "customer_name" {
   description = "Human-readable name of the customer"
   type        = string
@@ -22,15 +12,10 @@ variable "customer_name" {
   }
 }
 
-variable "architecture_type" {
-  description = "Type of architecture (e.g., 'forge', 'legacy', 'hybrid')"
+variable "project_name" {
+  description = "Project name for multi-tenant deployments"
   type        = string
-  default     = "forge"
-
-  validation {
-    condition     = contains(["forge", "legacy", "hybrid", "custom"], var.architecture_type)
-    error_message = "Architecture type must be one of: forge, legacy, hybrid, custom."
-  }
+  default     = null
 }
 
 variable "plan_tier" {

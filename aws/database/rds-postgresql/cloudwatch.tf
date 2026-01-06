@@ -54,7 +54,7 @@ resource "aws_cloudwatch_dashboard" "rds" {
           ]
           period = 300
           stat   = "Average"
-          region = data.aws_region.current.name
+          region = data.aws_region.current.id
           title  = "CPU Utilization"
           yAxis = {
             left = {
@@ -72,7 +72,7 @@ resource "aws_cloudwatch_dashboard" "rds" {
           ]
           period = 300
           stat   = "Average"
-          region = data.aws_region.current.name
+          region = data.aws_region.current.id
           title  = "Freeable Memory"
         }
       },
@@ -84,7 +84,7 @@ resource "aws_cloudwatch_dashboard" "rds" {
           ]
           period = 300
           stat   = "Average"
-          region = data.aws_region.current.name
+          region = data.aws_region.current.id
           title  = "Database Connections"
         }
       },
@@ -97,7 +97,7 @@ resource "aws_cloudwatch_dashboard" "rds" {
           ]
           period = 300
           stat   = "Average"
-          region = data.aws_region.current.name
+          region = data.aws_region.current.id
           title  = "Read/Write IOPS"
         }
       },
@@ -110,7 +110,7 @@ resource "aws_cloudwatch_dashboard" "rds" {
           ]
           period = 300
           stat   = "Average"
-          region = data.aws_region.current.name
+          region = data.aws_region.current.id
           title  = "Read/Write Latency"
         }
       },
@@ -122,7 +122,7 @@ resource "aws_cloudwatch_dashboard" "rds" {
           ]
           period = 300
           stat   = "Average"
-          region = data.aws_region.current.name
+          region = data.aws_region.current.id
           title  = "Free Storage Space"
         }
       },
@@ -135,7 +135,7 @@ resource "aws_cloudwatch_dashboard" "rds" {
           ]
           period = 300
           stat   = "Average"
-          region = data.aws_region.current.name
+          region = data.aws_region.current.id
           title  = "Network Throughput"
         }
       },
@@ -147,7 +147,7 @@ resource "aws_cloudwatch_dashboard" "rds" {
           ]
           period = 300
           stat   = "Average"
-          region = data.aws_region.current.name
+          region = data.aws_region.current.id
           title  = "Replica Lag (Multi-AZ)"
         }
       }

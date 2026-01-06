@@ -203,6 +203,6 @@ output "certificate_summary" {
     not_after  = aws_acm_certificate.main.not_after
 
     # Tags
-    tags = local.all_tags
+    tags = local.merged_tags
   }
 }
