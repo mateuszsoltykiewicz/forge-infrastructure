@@ -52,12 +52,16 @@ locals {
   } : {}
 
   # Legacy tags for backward compatibility
-  legacy_tags = local.is_customer_cluster ? {
-    CustomerId       = var.customer_id
-    CustomerName     = var.customer_name
-    ArchitectureType = var.architecture_type
-    PlanTier         = var.plan_tier
-  } : {}
+  legacy_tags = merge(
+    var.customer_id != "" ? { CustomerId = var.customer_id } : {},
+    var.plan_tier != "" ? { PlanTier = var.plan_tier } : {}
+  )
+
+  # Resource sharing tags
+  resource_sharing_tags = {
+    ResourceSharing = var.resource_sharing
+    SharedWith      = var.resource_sharing == "shared" ? join(",", var.shared_with_environments) : var.environment
+  }
 
   # ------------------------------------------------------------------------------
   # Merged Tags (Multi-Tenant)
@@ -68,6 +72,7 @@ locals {
     local.customer_tags,
     local.project_tags,
     local.legacy_tags,
+    local.resource_sharing_tags,
     var.tags
   )
 

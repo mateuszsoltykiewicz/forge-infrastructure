@@ -398,3 +398,32 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# ------------------------------------------------------------------------------
+# Resource Sharing Configuration
+# ------------------------------------------------------------------------------
+
+variable "resource_sharing" {
+  description = "Resource sharing mode: 'dedicated' (single environment) or 'shared' (multiple environments)"
+  type        = string
+  default     = "dedicated"
+
+  validation {
+    condition     = contains(["dedicated", "shared"], var.resource_sharing)
+    error_message = "Resource sharing must be 'dedicated' or 'shared'."
+  }
+}
+
+variable "shared_with_environments" {
+  description = "List of environments sharing this RDS instance (when resource_sharing = 'shared'). Example: ['staging', 'development']"
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for env in var.shared_with_environments :
+      contains(["production", "staging", "development"], env)
+    ])
+    error_message = "Shared environments must be one of: production, staging, development."
+  }
+}

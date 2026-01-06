@@ -237,7 +237,7 @@ output "access_entries" {
 
 output "kubectl_config_command" {
   description = "Command to update kubeconfig for this cluster"
-  value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
+  value       = "aws eks update-kubeconfig --region <AWS_REGION> --name ${module.eks.cluster_name}"
 }
 
 output "cluster_autoscaler_helm_values" {
@@ -246,7 +246,7 @@ output "cluster_autoscaler_helm_values" {
     autoDiscovery = {
       clusterName = module.eks.cluster_name
     }
-    awsRegion = var.aws_region
+    awsRegion = "<AWS_REGION>"  # Set this to your AWS region (e.g., us-east-1)
     rbac = {
       serviceAccount = {
         annotations = {

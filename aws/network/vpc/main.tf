@@ -20,13 +20,13 @@ resource "aws_vpc" "this" {
 }
 
 # ==============================================================================
-# Forge Best Practices:
+# Multi-Tenancy Pattern:
 # ==============================================================================
 # - Enable DNS support and hostnames for service discovery and AWS integrations
-# - Use customer_id and customer_name variables for customer-specific VPCs
-# - For shared architecture: Single VPC serves multiple customers via namespaces
-# - For dedicated_local: One VPC per customer in a single region
-# - For dedicated_regional: Multiple regional VPCs per customer
-# - Apply consistent tagging for cost allocation by customer
-# - Ensure CIDR blocks are unique and documented in the database
+# - Three isolation levels:
+#   1. Shared: workspace only (forge-{env}-vpc)
+#   2. Customer: workspace + customer (forge-{env}-cronus-vpc)
+#   3. Project: workspace + customer + project (forge-{env}-cronus-analytics-vpc)
+# - Apply consistent tagging for auto-discovery by EKS, RDS, Redis, ALB modules
+# - Ensure CIDR blocks are unique and non-overlapping
 # ==============================================================================

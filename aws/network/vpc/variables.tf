@@ -42,14 +42,7 @@ variable "environment" {
   }
 }
 
-variable "aws_region" {
-  type        = string
-  description = "The AWS region to deploy resources in."
-  validation {
-    condition     = can(regex("^[a-z]{2}-[a-z]+-[0-9]$", var.aws_region))
-    error_message = "Invalid AWS region format. Expected format: us-east-1, eu-west-1, etc."
-  }
-}
+
 
 # ------------------------------------------------------------------------------
 # Customer Context Variables (Optional - for customer-specific VPCs)
@@ -63,19 +56,14 @@ variable "customer_id" {
 
 variable "customer_name" {
   type        = string
-  description = "Customer name for resource naming and tagging. Required for dedicated architectures."
+  description = "Customer name for resource naming and tagging (e.g., 'cronus', 'acme'). Optional."
   default     = null
 }
 
-variable "architecture_type" {
+variable "project_name" {
   type        = string
-  description = "Architecture deployment model: 'shared', 'dedicated_local', 'dedicated_regional'."
-  default     = "shared"
-  
-  validation {
-    condition     = contains(["shared", "dedicated_local", "dedicated_regional"], var.architecture_type)
-    error_message = "Architecture type must be one of: shared, dedicated_local, dedicated_regional."
-  }
+  description = "Project name for resource naming and tagging (e.g., 'analytics', 'ml-platform'). Optional."
+  default     = null
 }
 
 variable "plan_tier" {
@@ -95,11 +83,20 @@ variable "common_tags" {
 }
 
 # ==============================================================================
-# Forge Best Practices:
+# Multi-Tenancy Patterns:
 # ==============================================================================
-# - For shared VPCs: customer_id and customer_name should be null
-# - For dedicated VPCs: customer_id and customer_name are required
-# - Always provide unique CIDR blocks to avoid routing conflicts
-# - Use architecture_type to determine resource isolation level
-# - Tag resources consistently for accurate cost allocation by customer
+# 1. Shared Infrastructure (workspace only):
+#    - customer_name = null, project_name = null
+#    - Resources: forge-{environment}-*
+#
+# 2. Customer-Specific (workspace + customer):
+#    - customer_name = "cronus", project_name = null
+#    - Resources: forge-{environment}-cronus-*
+#
+# 3. Project-Specific (workspace + customer + project):
+#    - customer_name = "cronus", project_name = "analytics"
+#    - Resources: forge-{environment}-cronus-analytics-*
+#
+# Always provide unique CIDR blocks to avoid routing conflicts.
+# Tag resources consistently for cost allocation and auto-discovery.
 # ==============================================================================

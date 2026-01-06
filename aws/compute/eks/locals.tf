@@ -15,11 +15,11 @@ locals {
 
   # Multi-tenant cluster naming conventions:
   # 1. Shared (platform): forge-{environment}-eks
-  # 2. Customer-dedicated: {customer_name}-{region}-eks
-  # 3. Customer + Project: {customer_name}-{project_name}-{region}-eks
+  # 2. Customer-dedicated: {customer_name}-{environment}-eks
+  # 3. Customer + Project: {customer_name}-{project_name}-{environment}-eks
   cluster_name = var.cluster_name_override != "" ? var.cluster_name_override : (
-    local.is_customer_cluster && local.is_project_cluster ? "${var.customer_name}-${var.project_name}-${var.aws_region}-eks" :
-    local.is_customer_cluster ? "${var.customer_name}-${var.aws_region}-eks" :
+    local.is_customer_cluster && local.is_project_cluster ? "${var.customer_name}-${var.project_name}-${var.environment}-eks" :
+    local.is_customer_cluster ? "${var.customer_name}-${var.environment}-eks" :
     "forge-${var.environment}-eks"
   )
 
@@ -31,7 +31,6 @@ locals {
     Environment       = var.environment
     ManagedBy         = "Terraform"
     TerraformModule   = "forge/aws/compute/eks"
-    Region            = var.aws_region
     ClusterName       = local.cluster_name
     KubernetesVersion = var.kubernetes_version
   }
@@ -49,13 +48,11 @@ locals {
     Project = var.project_name
   } : {}
 
-  # Legacy tags for backward compatibility
-  legacy_tags = local.is_customer_cluster ? {
-    CustomerId       = var.customer_id
-    CustomerName     = var.customer_name
-    ArchitectureType = var.architecture_type
-    PlanTier         = var.plan_tier
-  } : {}
+  # Legacy tags for backward compatibility (CustomerId, PlanTier)
+  legacy_tags = merge(
+    var.customer_id != "" ? { CustomerId = var.customer_id } : {},
+    var.plan_tier != "" ? { PlanTier = var.plan_tier } : {}
+  )
 
   # ------------------------------------------------------------------------------
   # Merged Tags (Multi-Tenant)

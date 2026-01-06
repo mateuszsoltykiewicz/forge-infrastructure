@@ -40,16 +40,6 @@ output "environment" {
   description = "The environment associated with this VPC (prod, staging, dev)."
 }
 
-output "aws_region" {
-  value       = var.aws_region
-  description = "The AWS region where the VPC is deployed."
-}
-
-output "architecture_type" {
-  value       = var.architecture_type
-  description = "The architecture deployment model (shared, dedicated_local, dedicated_regional)."
-}
-
 output "customer_id" {
   value       = var.customer_id
   description = "The customer UUID associated with this VPC (null for shared VPCs)."
@@ -58,6 +48,11 @@ output "customer_id" {
 output "customer_name" {
   value       = var.customer_name
   description = "The customer name associated with this VPC (null for shared VPCs)."
+}
+
+output "project_name" {
+  value       = var.project_name
+  description = "The project name associated with this VPC (null for non-project VPCs)."
 }
 
 # ------------------------------------------------------------------------------
@@ -75,10 +70,10 @@ output "enable_dns_hostnames" {
 }
 
 # ==============================================================================
-# Forge Best Practices:
+# Multi-Tenant Outputs:
 # ==============================================================================
-# - Always output key resource identifiers (VPC ID, ARN) for module composition
-# - Include customer context outputs for downstream modules (e.g., subnets, EKS)
-# - Use outputs to pass VPC information to dependent modules (security groups, etc.)
-# - Document each output clearly for users of this module
+# - Always output VPC ID and ARN for module composition
+# - Include workspace, environment, customer, project for downstream modules
+# - Outputs enable auto-discovery and dependency injection
+# - Use outputs to pass VPC information to EKS, RDS, Redis, ALB modules
 # ==============================================================================

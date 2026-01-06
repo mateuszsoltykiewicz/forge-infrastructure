@@ -13,10 +13,9 @@
 data "aws_vpc" "main" {
   tags = merge(
     {
-      ManagedBy   = "Forge"
+      ManagedBy   = "Terraform"
       Workspace   = var.workspace
       Environment = var.environment
-      Region      = var.aws_region
     },
     var.customer_name != "" ? { Customer = var.customer_name } : {},
     var.project_name != "" ? { Project = var.project_name } : {}

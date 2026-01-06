@@ -27,17 +27,6 @@ variable "project_name" {
   default     = ""
 }
 
-variable "architecture_type" {
-  description = "Architecture deployment type: shared, dedicated_local, or dedicated_regional"
-  type        = string
-  default     = "shared"
-
-  validation {
-    condition     = contains(["shared", "dedicated_local", "dedicated_regional"], var.architecture_type)
-    error_message = "Architecture type must be one of: shared, dedicated_local, or dedicated_regional."
-  }
-}
-
 variable "plan_tier" {
   description = "Customer plan tier (e.g., basic, pro, advanced) for cost allocation"
   type        = string
@@ -353,4 +342,33 @@ variable "tags" {
   description = "Additional tags to apply to all ElastiCache resources"
   type        = map(string)
   default     = {}
+}
+
+# ------------------------------------------------------------------------------
+# Resource Sharing Configuration
+# ------------------------------------------------------------------------------
+
+variable "resource_sharing" {
+  description = "Resource sharing mode: 'dedicated' (single environment) or 'shared' (multiple environments)"
+  type        = string
+  default     = "dedicated"
+
+  validation {
+    condition     = contains(["dedicated", "shared"], var.resource_sharing)
+    error_message = "Resource sharing must be 'dedicated' or 'shared'."
+  }
+}
+
+variable "shared_with_environments" {
+  description = "List of environments sharing this Redis cluster (when resource_sharing = 'shared'). Example: ['staging', 'development']"
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for env in var.shared_with_environments :
+      contains(["production", "staging", "development"], env)
+    ])
+    error_message = "Shared environments must be one of: production, staging, development."
+  }
 }

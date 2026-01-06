@@ -65,6 +65,12 @@ locals {
     PlanTier   = var.plan_tier
   } : {}
 
+  # Resource sharing tags
+  resource_sharing_tags = {
+    ResourceSharing = var.resource_sharing
+    SharedWith      = var.resource_sharing == "shared" ? join(",", var.shared_with_environments) : var.environment
+  }
+
   # ------------------------------------------------------------------------------
   # Merged Tags
   # ------------------------------------------------------------------------------
@@ -74,6 +80,7 @@ locals {
     local.customer_tags,
     local.project_tags,
     local.legacy_tags,
+    local.resource_sharing_tags,
     var.tags
   )
 

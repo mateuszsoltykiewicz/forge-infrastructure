@@ -27,17 +27,6 @@ variable "project_name" {
   default     = ""
 }
 
-variable "architecture_type" {
-  description = "Architecture deployment type: shared, dedicated_local, or dedicated_regional"
-  type        = string
-  default     = "shared"
-
-  validation {
-    condition     = contains(["shared", "dedicated_local", "dedicated_regional"], var.architecture_type)
-    error_message = "Architecture type must be one of: shared, dedicated_local, or dedicated_regional."
-  }
-}
-
 variable "plan_tier" {
   description = "Customer plan tier (e.g., basic, pro, advanced) for cost allocation"
   type        = string
@@ -56,11 +45,6 @@ variable "environment" {
     condition     = contains(["production", "staging", "development"], var.environment)
     error_message = "Environment must be one of: production, staging, or development."
   }
-}
-
-variable "aws_region" {
-  description = "AWS region where the EKS cluster will be deployed"
-  type        = string
 }
 
 variable "cluster_name_override" {
@@ -370,4 +354,47 @@ variable "tags" {
   description = "Additional tags to apply to all EKS resources"
   type        = map(string)
   default     = {}
+}
+
+# ------------------------------------------------------------------------------
+# Kubernetes Namespaces Configuration
+# ------------------------------------------------------------------------------
+
+variable "namespaces" {
+  description = <<-EOD
+    Map of Kubernetes namespaces to create with resource quotas and network policies.
+    Each namespace can have:
+    - labels: Custom labels for the namespace
+    - resource_quota: CPU, memory, and pod limits
+    - network_policy: Ingress/egress rules
+    
+    Example:
+    {
+      "prod-cronus" = {
+        labels = { team = "cronus", tier = "production" }
+        resource_quota = {
+          hard = {
+            "requests.cpu"    = "10"
+            "requests.memory" = "20Gi"
+            "pods"            = "50"
+          }
+        }
+        network_policy = {
+          ingress_from_namespaces = ["dev-cronus", "stag-cronus"]
+          egress_allowed          = true
+        }
+      }
+    }
+  EOD
+  type = map(object({
+    labels = optional(map(string), {})
+    resource_quota = optional(object({
+      hard = optional(map(string), {})
+    }), null)
+    network_policy = optional(object({
+      ingress_from_namespaces = optional(list(string), [])
+      egress_allowed          = optional(bool, true)
+    }), null)
+  }))
+  default = {}
 }
