@@ -8,10 +8,13 @@ locals {
   # ------------------------------------------------------------------------------
 
   # VPN endpoint name based on customer/project context
+  # 1. Shared: forge-{environment}-vpn
+  # 2. Customer-dedicated: forge-{environment}-{customer}-vpn
+  # 3. Project-isolated: forge-{environment}-{customer}-{project}-vpn
   vpn_name = var.customer_name != null && var.project_name != null ? (
-    "forge-${var.customer_name}-${var.project_name}-vpn"
-  ) : var.customer_name != null ? (
-    "forge-${var.customer_name}-vpn"
+    "forge-${var.environment}-${var.customer_name}-${var.project_name}-vpn"
+    ) : var.customer_name != null ? (
+    "forge-${var.environment}-${var.customer_name}-vpn"
   ) : "forge-${var.environment}-vpn"
 
   # Security group name

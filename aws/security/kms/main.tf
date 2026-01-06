@@ -13,24 +13,24 @@ resource "aws_kms_key" "main" {
   key_usage                = var.key_usage
   customer_master_key_spec = var.customer_master_key_spec
   multi_region             = var.multi_region
-  
+
   # Automatic key rotation (only for symmetric keys)
   enable_key_rotation = (
-    var.customer_master_key_spec == "SYMMETRIC_DEFAULT" && 
+    var.customer_master_key_spec == "SYMMETRIC_DEFAULT" &&
     var.enable_key_rotation
   )
-  
+
   rotation_period_in_days = (
-    var.customer_master_key_spec == "SYMMETRIC_DEFAULT" && 
-    var.enable_key_rotation ? 
-    var.rotation_period_in_days : 
+    var.customer_master_key_spec == "SYMMETRIC_DEFAULT" &&
+    var.enable_key_rotation ?
+    var.rotation_period_in_days :
     null
   )
-  
-  deletion_window_in_days              = var.deletion_window_in_days
-  is_enabled                            = var.is_enabled
-  bypass_policy_lockout_safety_check   = var.bypass_policy_lockout_safety_check
-  
+
+  deletion_window_in_days            = var.deletion_window_in_days
+  is_enabled                         = var.is_enabled
+  bypass_policy_lockout_safety_check = var.bypass_policy_lockout_safety_check
+
   policy = local.default_key_policy
 
   tags = merge(
@@ -66,7 +66,7 @@ resource "aws_kms_grant" "main" {
 
   dynamic "constraints" {
     for_each = each.value.constraints != null ? [each.value.constraints] : []
-    
+
     content {
       encryption_context_equals = constraints.value.encryption_context_equals
       encryption_context_subset = constraints.value.encryption_context_subset

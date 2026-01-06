@@ -11,12 +11,12 @@ locals {
   family = "network"
 
   # Customer context
-  is_customer_vpc = var.customer_id != null
+  has_customer = var.customer_name != null && var.customer_name != ""
 
   # ------------------------------------------------------------------------------
   # EIP Capacity Planning
   # ------------------------------------------------------------------------------
-  
+
   # Get EIP limit (from Service Quotas API or default)
   eip_limit = var.check_eip_quota && length(data.aws_servicequotas_service_quota.eip_limit) > 0 ? (
     data.aws_servicequotas_service_quota.eip_limit[0].value
@@ -42,7 +42,7 @@ locals {
   actual_nat_count = local.use_existing_eips ? (
     # If using existing EIPs, count is based on provided list
     length(var.existing_eip_allocation_ids)
-  ) : (
+    ) : (
     # If creating new EIPs, respect mode and availability
     var.nat_gateway_mode == "best_effort" ? (
       min(local.desired_nat_count, local.available_eips)
@@ -87,7 +87,7 @@ locals {
 
   nat_name_prefix = var.architecture_type == "shared" ? (
     "${var.vpc_name}-nat"
-  ) : (
+    ) : (
     "${var.customer_name}-${var.aws_region}-nat"
   )
 
@@ -115,7 +115,7 @@ locals {
 
   # NAT Gateway-specific tags
   nat_tags = {
-    ResourceType = "NATGateway"
+    ResourceType   = "NATGateway"
     DeploymentMode = var.nat_gateway_mode
   }
 

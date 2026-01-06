@@ -8,25 +8,29 @@ locals {
   # ------------------------------------------------------------------------------
   # Alias Naming
   # ------------------------------------------------------------------------------
-  
+
+  # Determine naming context
+  has_customer = var.customer_name != null && var.customer_name != ""
+  has_project  = var.project_name != null && var.project_name != ""
+
   # Generate alias name based on customer context if not provided
-  generated_alias_name = var.architecture_type == "shared" ? (
-    # Shared: forge-{environment}-{purpose}
+  # 1. Shared: forge-{environment}-{purpose}
+  # 2. Customer-dedicated: forge-{environment}-{customer}-{purpose}
+  # 3. Project-isolated: forge-{environment}-{customer}-{project}-{purpose}
+  generated_alias_name = local.has_project ? "forge-${var.environment}-${var.customer_name}-${var.project_name}-${var.key_purpose}" : (
+    local.has_customer ? "forge-${var.environment}-${var.customer_name}-${var.key_purpose}" :
     "forge-${var.environment}-${var.key_purpose}"
-  ) : (
-    # Dedicated: {customer_name}-{purpose}
-    "${var.customer_name}-${var.key_purpose}"
   )
-  
+
   alias_name = var.alias_name != "" ? var.alias_name : local.generated_alias_name
 
   # ------------------------------------------------------------------------------
   # Key Policy Construction
   # ------------------------------------------------------------------------------
-  
+
   # Get current AWS account ID
   account_id = data.aws_caller_identity.current.account_id
-  
+
   # Build key policy from variables (if custom policy not provided)
   default_key_policy = var.custom_key_policy == null ? jsonencode({
     Version = "2012-10-17"
@@ -44,7 +48,7 @@ locals {
           Resource = "*"
         }
       ] : [],
-      
+
       # Key administrators
       length(var.key_administrators) > 0 ? [
         {
@@ -72,7 +76,7 @@ locals {
           Resource = "*"
         }
       ] : [],
-      
+
       # Key users (cryptographic operations)
       length(var.key_users) > 0 ? [
         {
@@ -109,7 +113,7 @@ locals {
           }
         }
       ] : [],
-      
+
       # AWS Service principals
       length(var.key_service_users) > 0 ? [
         {
@@ -143,18 +147,18 @@ locals {
   # ------------------------------------------------------------------------------
   # Resource Tagging
   # ------------------------------------------------------------------------------
-  
+
   # Base tags applied to all resources
   base_tags = {
-    Environment      = var.environment
-    ManagedBy        = "Terraform"
-    TerraformModule  = "forge/security/kms"
-    Region           = var.region
-    KeyPurpose       = var.key_purpose
-    KeyUsage         = var.key_usage
-    MultiRegion      = var.multi_region ? "true" : "false"
+    Environment     = var.environment
+    ManagedBy       = "Terraform"
+    TerraformModule = "forge/security/kms"
+    Region          = var.region
+    KeyPurpose      = var.key_purpose
+    KeyUsage        = var.key_usage
+    MultiRegion     = var.multi_region ? "true" : "false"
   }
-  
+
   # Customer-specific tags (only for dedicated architectures)
   customer_tags = var.architecture_type != "shared" ? {
     CustomerId       = var.customer_id
@@ -162,7 +166,7 @@ locals {
     ArchitectureType = var.architecture_type
     PlanTier         = var.plan_tier
   } : {}
-  
+
   # Merge all tags
   merged_tags = merge(
     local.base_tags,

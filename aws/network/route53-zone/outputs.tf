@@ -139,17 +139,17 @@ output "query_log_group_arn" {
 output "summary" {
   description = "Summary of Route 53 hosted zone configuration"
   value = {
-    zone_id              = aws_route53_zone.this.zone_id
-    zone_arn             = aws_route53_zone.this.arn
-    zone_name            = aws_route53_zone.this.name
-    zone_type            = var.zone_type
-    name_servers         = aws_route53_zone.this.name_servers
-    primary_name_server  = aws_route53_zone.this.primary_name_server
-    vpc_id               = var.zone_type == "private" ? var.vpc_id : null
+    zone_id               = aws_route53_zone.this.zone_id
+    zone_arn              = aws_route53_zone.this.arn
+    zone_name             = aws_route53_zone.this.name
+    zone_type             = var.zone_type
+    name_servers          = aws_route53_zone.this.name_servers
+    primary_name_server   = aws_route53_zone.this.primary_name_server
+    vpc_id                = var.zone_type == "private" ? var.vpc_id : null
     vpc_association_count = var.zone_type == "private" ? (1 + length(aws_route53_zone_association.additional)) : 0
-    dnssec_enabled       = var.enable_dnssec
+    dnssec_enabled        = var.enable_dnssec
     query_logging_enabled = var.enable_query_logging
-    architecture_type    = var.architecture_type
-    environment          = var.environment
+    architecture_type     = var.architecture_type
+    environment           = var.environment
   }
 }

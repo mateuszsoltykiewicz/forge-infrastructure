@@ -38,13 +38,13 @@ locals {
 
   # Base tags applied to all resources
   base_tags = {
-    Environment      = var.environment
-    ManagedBy        = "terraform"
-    TerraformModule  = "configuration/ssm-parameter"
-    Region           = var.region
-    ParameterType    = var.parameter_type
-    ParameterTier    = var.parameter_tier
-    ResourceType     = var.resource_type
+    Environment     = var.environment
+    ManagedBy       = "terraform"
+    TerraformModule = "configuration/ssm-parameter"
+    Region          = var.region
+    ParameterType   = var.parameter_type
+    ParameterTier   = var.parameter_tier
+    ResourceType    = var.resource_type
   }
 
   # Customer-specific tags (only applied for dedicated architectures)

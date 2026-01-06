@@ -19,7 +19,7 @@ locals {
 
   # Determine if this is a standard AWS service or PrivateLink service
   is_aws_service = !can(regex("^com\\.amazonaws\\.vpce\\.", var.service_name))
-  
+
   # Extract service short name (e.g., "s3" from "s3" or "ec2" from "ec2")
   # For AWS services, use the service name directly
   # For PrivateLink, extract from the service ID
@@ -39,11 +39,11 @@ locals {
   # 1. Shared: forge-{environment}-{service}-vpce
   # 2. Customer: forge-{environment}-{customer}-{service}-vpce
   # 3. Project: forge-{environment}-{customer}-{project}-{service}-vpce
-  
+
   name_prefix = local.has_project ? "forge-${var.environment}-${var.customer_name}-${var.project_name}" : (
     local.has_customer ? "forge-${var.environment}-${var.customer_name}" : "forge-${var.environment}"
   )
-  
+
   endpoint_name = "${local.name_prefix}-${local.service_short_name}-vpce"
 
   # ------------------------------------------------------------------------------
@@ -52,12 +52,12 @@ locals {
 
   # Gateway endpoints only support S3 and DynamoDB
   is_gateway_service = contains(["s3", "dynamodb"], var.service_name)
-  
+
   # Validate endpoint type matches service
   endpoint_type_valid = (
     (var.endpoint_type == "Gateway" && local.is_gateway_service) ||
     (var.endpoint_type != "Gateway" && !local.is_gateway_service) ||
-    (var.endpoint_type == "Interface" && local.is_gateway_service)  # Interface works for all services
+    (var.endpoint_type == "Interface" && local.is_gateway_service) # Interface works for all services
   )
 
   # ------------------------------------------------------------------------------
@@ -66,15 +66,15 @@ locals {
 
   # Interface/GWLB endpoints require subnet_ids
   requires_subnets = contains(["Interface", "GatewayLoadBalancer"], var.endpoint_type)
-  has_subnets = length(var.subnet_ids) > 0
+  has_subnets      = length(var.subnet_ids) > 0
 
   # Interface endpoints require security_group_ids
   requires_security_groups = var.endpoint_type == "Interface"
-  has_security_groups = length(var.security_group_ids) > 0
+  has_security_groups      = length(var.security_group_ids) > 0
 
   # Gateway endpoints require route_table_ids
   requires_route_tables = var.endpoint_type == "Gateway"
-  has_route_tables = length(var.route_table_ids) > 0
+  has_route_tables      = length(var.route_table_ids) > 0
 
   # ------------------------------------------------------------------------------
   # Tagging Strategy (Multi-Tenant)
@@ -94,7 +94,7 @@ locals {
   customer_tags = local.has_customer ? {
     Customer = var.customer_name
   } : {}
-  
+
   project_tags = local.has_project ? {
     Project = var.project_name
   } : {}

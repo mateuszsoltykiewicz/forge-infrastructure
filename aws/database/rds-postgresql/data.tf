@@ -26,8 +26,8 @@ data "aws_vpc" "main" {
       Workspace   = var.workspace
       Environment = var.environment
     },
-    local.is_customer_cluster ? { Customer = var.customer_name } : {},
-    local.is_project_cluster ? { Project = var.project_name } : {}
+    local.has_customer ? { Customer = var.customer_name } : {},
+    local.has_project ? { Project = var.project_name } : {}
   )
 }
 

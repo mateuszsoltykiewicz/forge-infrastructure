@@ -3,11 +3,17 @@
 # ========================================
 
 locals {
+  # Multi-tenant detection
+  has_customer = var.customer_name != null && var.customer_name != ""
+  has_project  = var.project_name != null && var.project_name != ""
+
   # Certificate naming
-  certificate_name = var.architecture_type == "forge" ? (
+  # 1. Shared: forge-{environment}-cert
+  # 2. Customer: forge-{environment}-{customer}-cert
+  # 3. Project: forge-{environment}-{customer}-{project}-cert
+  certificate_name = local.has_project ? "forge-${var.environment}-${var.customer_name}-${var.project_name}-cert" : (
+    local.has_customer ? "forge-${var.environment}-${var.customer_name}-cert" :
     "forge-${var.environment}-cert"
-    ) : (
-    "${var.customer_id}-${var.region}-cert"
   )
 
   # All domain names (primary + SANs)
@@ -23,8 +29,8 @@ locals {
   base_domain = local.is_wildcard ? substr(var.domain_name, 2, length(var.domain_name) - 2) : var.domain_name
 
   # Validation flags
-  is_dns_validation       = var.validation_method == "DNS"
-  is_email_validation     = var.validation_method == "EMAIL"
+  is_dns_validation         = var.validation_method == "DNS"
+  is_email_validation       = var.validation_method == "EMAIL"
   should_create_dns_records = local.is_dns_validation && var.create_route53_records && var.route53_zone_id != null
 
   # Key algorithm details
@@ -34,7 +40,7 @@ locals {
   # Certificate status description
   validation_method_description = local.is_dns_validation ? (
     "DNS validation via Route 53 (automatic)"
-  ) : (
+    ) : (
     "Email validation (manual)"
   )
 
@@ -55,11 +61,11 @@ locals {
   }
 
   certificate_tags = {
-    Name              = local.certificate_name
-    DomainName        = var.domain_name
-    ValidationMethod  = var.validation_method
-    KeyAlgorithm      = var.key_algorithm
-    IsWildcard        = tostring(local.is_wildcard)
+    Name             = local.certificate_name
+    DomainName       = var.domain_name
+    ValidationMethod = var.validation_method
+    KeyAlgorithm     = var.key_algorithm
+    IsWildcard       = tostring(local.is_wildcard)
   }
 
   all_tags = merge(

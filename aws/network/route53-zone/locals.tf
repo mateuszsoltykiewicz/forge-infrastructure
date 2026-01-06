@@ -54,7 +54,7 @@ locals {
   auto_comment = var.comment != "" ? var.comment : (
     var.zone_type == "public" ? (
       "Public hosted zone for ${var.domain_name} (${var.environment})"
-    ) : (
+      ) : (
       "Private hosted zone for ${var.domain_name} in VPC ${var.vpc_id} (${var.environment})"
     )
   )

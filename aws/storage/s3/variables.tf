@@ -145,25 +145,25 @@ variable "bucket_key_enabled" {
 variable "lifecycle_rules" {
   description = "List of lifecycle rules for object transitions and expiration"
   type = list(object({
-    id                        = string
-    enabled                   = bool
-    prefix                    = optional(string)
+    id                                     = string
+    enabled                                = bool
+    prefix                                 = optional(string)
     abort_incomplete_multipart_upload_days = optional(number)
-    
+
     expiration = optional(object({
       days                         = optional(number)
       expired_object_delete_marker = optional(bool)
     }))
-    
+
     noncurrent_version_expiration = optional(object({
       noncurrent_days = number
     }))
-    
+
     transition = optional(list(object({
       days          = number
       storage_class = string
     })))
-    
+
     noncurrent_version_transition = optional(list(object({
       noncurrent_days = number
       storage_class   = string
@@ -251,13 +251,13 @@ variable "replication_rules" {
     status   = string
     priority = optional(number)
     prefix   = optional(string)
-    
+
     destination = object({
-      bucket        = string
-      storage_class = optional(string)
+      bucket             = string
+      storage_class      = optional(string)
       replica_kms_key_id = optional(string)
     })
-    
+
     source_selection_criteria = optional(object({
       sse_kms_encrypted_objects = optional(object({
         enabled = bool
@@ -280,7 +280,7 @@ variable "object_lock_enabled" {
 variable "object_lock_configuration" {
   description = "Object Lock configuration (COMPLIANCE or GOVERNANCE mode)"
   type = object({
-    mode  = string  # COMPLIANCE or GOVERNANCE
+    mode  = string # COMPLIANCE or GOVERNANCE
     days  = optional(number)
     years = optional(number)
   })

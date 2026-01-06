@@ -146,7 +146,7 @@ variable "kms_key_id" {
   default     = null
 
   validation {
-    condition = var.kms_key_id == null || can(regex("^(arn:aws:kms:[a-z0-9-]+:[0-9]{12}:key/[a-f0-9-]+|[a-f0-9-]+)$", var.kms_key_id))
+    condition     = var.kms_key_id == null || can(regex("^(arn:aws:kms:[a-z0-9-]+:[0-9]{12}:key/[a-f0-9-]+|[a-f0-9-]+)$", var.kms_key_id))
     error_message = "kms_key_id must be a valid KMS key ID or ARN"
   }
 }
@@ -167,7 +167,7 @@ variable "query_log_group_arn" {
   default     = null
 
   validation {
-    condition = var.query_log_group_arn == null || can(regex("^arn:aws:logs:[a-z0-9-]+:[0-9]{12}:log-group:", var.query_log_group_arn))
+    condition     = var.query_log_group_arn == null || can(regex("^arn:aws:logs:[a-z0-9-]+:[0-9]{12}:log-group:", var.query_log_group_arn))
     error_message = "query_log_group_arn must be a valid CloudWatch Log Group ARN"
   }
 }

@@ -10,20 +10,17 @@ locals {
   # ------------------------------------------------------------------------------
 
   # Determine cluster type based on customer_name and project_name
-  is_customer_cluster = var.customer_name != ""
-  is_project_cluster  = var.customer_name != "" && var.project_name != ""
+  has_customer = var.customer_name != null && var.customer_name != ""
+  has_project  = var.project_name != null && var.project_name != ""
 
   # Generate DB identifier based on multi-tenant context:
   # - Shared: forge-{environment}-db
-  # - Customer: forge-{environment}-{customer_name}-db
-  # - Project: forge-{environment}-{customer_name}-{project_name}-db
+  # - Customer: forge-{environment}-{customer}-db
+  # - Project: forge-{environment}-{customer}-{project}-db
   db_identifier = var.identifier_override != "" ? var.identifier_override : (
-    local.is_project_cluster
-    ? "forge-${var.environment}-${var.customer_name}-${var.project_name}-db"
-    : (local.is_customer_cluster
-      ? "forge-${var.environment}-${var.customer_name}-db"
-      : "forge-${var.environment}-db"
-    )
+    local.has_project ? "forge-${var.environment}-${var.customer_name}-${var.project_name}-db" :
+    local.has_customer ? "forge-${var.environment}-${var.customer_name}-db" :
+    "forge-${var.environment}-db"
   )
 
   # ------------------------------------------------------------------------------
@@ -51,11 +48,11 @@ locals {
   # ------------------------------------------------------------------------------
 
   # Add customer/project tags when applicable
-  customer_tags = local.is_customer_cluster ? {
+  customer_tags = local.has_customer ? {
     Customer = var.customer_name
   } : {}
 
-  project_tags = local.is_project_cluster ? {
+  project_tags = local.has_project ? {
     Project = var.project_name
   } : {}
 

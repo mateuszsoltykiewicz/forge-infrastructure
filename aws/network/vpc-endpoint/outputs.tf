@@ -84,7 +84,7 @@ output "dns_entries" {
   description = "DNS entries for the endpoint (Interface endpoints)"
   value = aws_vpc_endpoint.this.dns_entry != null ? [
     for entry in aws_vpc_endpoint.this.dns_entry : {
-      dns_name      = entry.dns_name
+      dns_name       = entry.dns_name
       hosted_zone_id = entry.hosted_zone_id
     }
   ] : []

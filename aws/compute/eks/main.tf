@@ -48,7 +48,7 @@ resource "aws_kms_alias" "eks" {
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 21.0"  # Updated to support AWS provider >= 6.0
+  version = "~> 21.0" # Updated to support AWS provider >= 6.0
 
   name               = local.cluster_name
   kubernetes_version = var.kubernetes_version

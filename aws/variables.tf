@@ -187,7 +187,7 @@ variable "redis_num_cache_nodes" {
 variable "alb_certificate_arn" {
   description = "ACM certificate ARN for HTTPS listeners (wildcard *.insighthealth.io)"
   type        = string
-  default     = null  # Must be created manually or via separate ACM module
+  default     = null # Must be created manually or via separate ACM module
 }
 
 # ------------------------------------------------------------------------------

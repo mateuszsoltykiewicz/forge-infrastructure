@@ -344,9 +344,9 @@ variable "custom_rules" {
     ]
   EOT
   type = list(object({
-    name     = string
-    priority = number
-    action   = string
+    name      = string
+    priority  = number
+    action    = string
     statement = any
   }))
   default = []

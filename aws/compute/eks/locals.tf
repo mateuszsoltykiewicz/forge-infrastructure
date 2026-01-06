@@ -10,16 +10,16 @@ locals {
   # ------------------------------------------------------------------------------
 
   # Determine cluster ownership model
-  is_customer_cluster = var.customer_id != ""
-  is_project_cluster  = var.project_name != ""
+  has_customer = var.customer_name != null && var.customer_name != ""
+  has_project  = var.project_name != null && var.project_name != ""
 
   # Multi-tenant cluster naming conventions:
   # 1. Shared (platform): forge-{environment}-eks
-  # 2. Customer-dedicated: {customer_name}-{environment}-eks
-  # 3. Customer + Project: {customer_name}-{project_name}-{environment}-eks
+  # 2. Customer-dedicated: forge-{environment}-{customer}-eks
+  # 3. Project-isolated: forge-{environment}-{customer}-{project}-eks
   cluster_name = var.cluster_name_override != "" ? var.cluster_name_override : (
-    local.is_customer_cluster && local.is_project_cluster ? "${var.customer_name}-${var.project_name}-${var.environment}-eks" :
-    local.is_customer_cluster ? "${var.customer_name}-${var.environment}-eks" :
+    local.has_project ? "forge-${var.environment}-${var.customer_name}-${var.project_name}-eks" :
+    local.has_customer ? "forge-${var.environment}-${var.customer_name}-eks" :
     "forge-${var.environment}-eks"
   )
 
@@ -40,11 +40,11 @@ locals {
   # ------------------------------------------------------------------------------
 
   # Multi-tenant tags (Customer + Project)
-  customer_tags = local.is_customer_cluster ? {
+  customer_tags = local.has_customer ? {
     Customer = var.customer_name
   } : {}
 
-  project_tags = local.is_project_cluster ? {
+  project_tags = local.has_project ? {
     Project = var.project_name
   } : {}
 

@@ -44,21 +44,21 @@ locals {
 
   # Production database configuration
   production_db_config = {
-    resource_sharing        = "shared"
+    resource_sharing         = "shared"
     shared_with_environments = var.shared_database_environments
   }
 
   # Production Redis configuration
   production_redis_config = {
-    resource_sharing        = "shared"
+    resource_sharing         = "shared"
     shared_with_environments = var.shared_redis_environments
   }
 
   # Staging and development use production resources (no separate DB/Redis)
-  create_staging_db    = !contains(var.shared_database_environments, "staging")
+  create_staging_db     = !contains(var.shared_database_environments, "staging")
   create_development_db = !contains(var.shared_database_environments, "development")
-  
-  create_staging_redis    = !contains(var.shared_redis_environments, "staging")
+
+  create_staging_redis     = !contains(var.shared_redis_environments, "staging")
   create_development_redis = !contains(var.shared_redis_environments, "development")
 
   # ------------------------------------------------------------------------------
@@ -69,8 +69,8 @@ locals {
   alb_configs = {
     for env_key, env_config in local.active_environments :
     env_key => {
-      subdomain = env_config.subdomain
-      nodeport  = env_config.nodeport
+      subdomain        = env_config.subdomain
+      nodeport         = env_config.nodeport
       target_group_key = "eks-${env_config.short_name}"
     }
   }
@@ -111,7 +111,7 @@ locals {
 
   vpc_name = var.customer_name != null && var.project_name != null ? (
     "forge-${var.customer_name}-${var.project_name}-vpc"
-  ) : var.customer_name != null ? (
+    ) : var.customer_name != null ? (
     "forge-${var.customer_name}-vpc"
   ) : "forge-vpc"
 

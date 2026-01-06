@@ -137,8 +137,8 @@ output "dns_records_to_create" {
   value = {
     for env_key, alb in module.alb :
     env_key => {
-      name   = "${local.all_environments[env_key].subdomain}.${var.domain_name}"
-      type   = "A"
+      name = "${local.all_environments[env_key].subdomain}.${var.domain_name}"
+      type = "A"
       alias = {
         name    = alb.alb_dns_name
         zone_id = alb.alb_zone_id
@@ -188,13 +188,13 @@ output "next_steps" {
     
     2. Create Route53 DNS records:
        %{for env_key, record in {
-         for env_key, alb in module.alb :
-         env_key => {
-           name   = "${local.all_environments[env_key].subdomain}.${var.domain_name}"
-           type   = "A (Alias)"
-           target = alb.alb_dns_name
-         }
-       }~}
+  for env_key, alb in module.alb :
+  env_key => {
+    name   = "${local.all_environments[env_key].subdomain}.${var.domain_name}"
+    type   = "A (Alias)"
+    target = alb.alb_dns_name
+  }
+} ~}
        - ${record.name} -> ${record.target} (${record.type})
        %{endfor~}
     

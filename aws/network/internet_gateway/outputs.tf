@@ -63,13 +63,13 @@ output "architecture_type" {
 output "internet_gateway_summary" {
   description = "Summary of Internet Gateway configuration"
   value = {
-    igw_id                 = aws_internet_gateway.this.id
-    igw_name               = local.igw_name
-    vpc_id                 = var.vpc_id
-    vpc_name               = var.vpc_name
-    public_route_table_id  = var.public_route_table_id
-    default_route_created  = true
-    customer_id            = var.customer_id
-    architecture_type      = var.architecture_type
+    igw_id                = aws_internet_gateway.this.id
+    igw_name              = local.igw_name
+    vpc_id                = var.vpc_id
+    vpc_name              = var.vpc_name
+    public_route_table_id = var.public_route_table_id
+    default_route_created = true
+    customer_id           = var.customer_id
+    architecture_type     = var.architecture_type
   }
 }

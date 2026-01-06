@@ -190,13 +190,13 @@ output "certificate_summary" {
     is_wildcard               = local.is_wildcard
 
     # Validation
-    validation_method         = var.validation_method
+    validation_method          = var.validation_method
     validation_records_created = local.should_create_dns_records
-    is_validated              = var.wait_for_validation && local.is_dns_validation && local.should_create_dns_records
+    is_validated               = var.wait_for_validation && local.is_dns_validation && local.should_create_dns_records
 
     # Configuration
-    key_algorithm                     = var.key_algorithm
-    certificate_transparency_logging  = var.certificate_transparency_logging
+    key_algorithm                    = var.key_algorithm
+    certificate_transparency_logging = var.certificate_transparency_logging
 
     # Validity
     not_before = aws_acm_certificate.main.not_before

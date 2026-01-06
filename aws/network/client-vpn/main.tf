@@ -98,7 +98,7 @@ resource "aws_ec2_client_vpn_endpoint" "this" {
     active_directory_id = var.authentication_type == "directory-service-authentication" ? var.active_directory_id : null
 
     # SAML-based federated authentication
-    saml_provider_arn          = var.authentication_type == "federated-authentication" ? var.saml_provider_arn : null
+    saml_provider_arn              = var.authentication_type == "federated-authentication" ? var.saml_provider_arn : null
     self_service_saml_provider_arn = var.authentication_type == "federated-authentication" && var.enable_self_service_portal ? var.self_service_saml_provider_arn : null
   }
 

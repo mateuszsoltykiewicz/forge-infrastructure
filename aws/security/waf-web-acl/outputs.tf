@@ -188,15 +188,15 @@ output "metric_names" {
 output "estimated_monthly_cost" {
   description = "Estimated monthly cost breakdown (USD)"
   value = {
-    web_acl_base          = 5.00 # $5/month per Web ACL
-    rules_standard        = length(aws_wafv2_web_acl.main.rule) * 1.00 # $1/month per rule
-    rule_groups           = length(local.enabled_managed_rule_groups) * 0.00 # AWS managed groups are free
-    wcu_capacity          = aws_wafv2_web_acl.main.capacity * 0.00 # First 1500 WCUs free, then $1/WCU
-    requests_per_million  = 0.60 # $0.60 per million requests
-    bot_control_premium   = var.enable_aws_managed_rules_bot_control ? 10.00 : 0.00 # $10/month + $1 per million requests
-    atp_premium           = var.enable_aws_managed_rules_account_takeover ? 10.00 : 0.00 # $10/month + $1 per million requests
-    total_base            = 5.00 + (length(aws_wafv2_web_acl.main.rule) * 1.00) + (var.enable_aws_managed_rules_bot_control ? 10.00 : 0.00) + (var.enable_aws_managed_rules_account_takeover ? 10.00 : 0.00)
-    note                  = "Add $0.60 per million requests. CloudWatch Logs: $0.50/GB ingested, $0.03/GB stored."
+    web_acl_base         = 5.00                                                         # $5/month per Web ACL
+    rules_standard       = length(aws_wafv2_web_acl.main.rule) * 1.00                   # $1/month per rule
+    rule_groups          = length(local.enabled_managed_rule_groups) * 0.00             # AWS managed groups are free
+    wcu_capacity         = aws_wafv2_web_acl.main.capacity * 0.00                       # First 1500 WCUs free, then $1/WCU
+    requests_per_million = 0.60                                                         # $0.60 per million requests
+    bot_control_premium  = var.enable_aws_managed_rules_bot_control ? 10.00 : 0.00      # $10/month + $1 per million requests
+    atp_premium          = var.enable_aws_managed_rules_account_takeover ? 10.00 : 0.00 # $10/month + $1 per million requests
+    total_base           = 5.00 + (length(aws_wafv2_web_acl.main.rule) * 1.00) + (var.enable_aws_managed_rules_bot_control ? 10.00 : 0.00) + (var.enable_aws_managed_rules_account_takeover ? 10.00 : 0.00)
+    note                 = "Add $0.60 per million requests. CloudWatch Logs: $0.50/GB ingested, $0.03/GB stored."
   }
 }
 
@@ -254,10 +254,10 @@ output "waf_summary" {
 
     # Logging
     logging = {
-      enabled             = var.enable_logging
-      destination_type    = var.log_destination_type
+      enabled              = var.enable_logging
+      destination_type     = var.log_destination_type
       cloudwatch_log_group = local.should_create_log_group ? aws_cloudwatch_log_group.waf[0].name : null
-      retention_days      = var.cloudwatch_log_retention_days
+      retention_days       = var.cloudwatch_log_retention_days
     }
 
     # Association

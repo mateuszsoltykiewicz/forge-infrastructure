@@ -31,7 +31,7 @@ output "eip_ids" {
   description = "List of Elastic IP IDs associated with NAT Gateways"
   value = local.use_existing_eips ? (
     var.existing_eip_allocation_ids
-  ) : (
+    ) : (
     aws_eip.nat[*].id
   )
 }
@@ -40,7 +40,7 @@ output "eip_public_ips" {
   description = "List of Elastic IP public IP addresses"
   value = local.use_existing_eips ? (
     [] # Cannot fetch public IPs for existing EIPs without data source
-  ) : (
+    ) : (
     aws_eip.nat[*].public_ip
   )
 }

@@ -90,7 +90,7 @@ resource "aws_nat_gateway" "this" {
 
   allocation_id = local.use_existing_eips ? (
     var.existing_eip_allocation_ids[count.index]
-  ) : (
+    ) : (
     aws_eip.nat[count.index].id
   )
 

@@ -220,8 +220,8 @@ variable "grants" {
       encryption_context_equals = optional(map(string))
       encryption_context_subset = optional(map(string))
     }))
-    retiring_principal       = optional(string)
-    grant_creation_tokens    = optional(list(string))
+    retiring_principal    = optional(string)
+    grant_creation_tokens = optional(list(string))
   }))
   default = []
 }

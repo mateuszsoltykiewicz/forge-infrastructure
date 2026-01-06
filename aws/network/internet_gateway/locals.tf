@@ -10,14 +10,14 @@ locals {
   family = "network"
 
   # Customer context
-  is_customer_vpc = var.customer_id != null
+  has_customer = var.customer_name != null && var.customer_name != ""
+  has_project  = var.project_name != null && var.project_name != ""
 
-  # Internet Gateway naming based on architecture type
-  igw_name = var.architecture_type == "shared" ? (
-    "${var.vpc_name}-igw"
-    ) : (
-    "${var.customer_name}-${var.aws_region}-igw"
-  )
+  # Internet Gateway naming based on multi-tenant pattern
+  # 1. Shared: {vpc_name}-igw
+  # 2. Customer: {vpc_name}-igw (vpc_name already includes customer)
+  # 3. Project: {vpc_name}-igw (vpc_name already includes customer and project)
+  igw_name = "${var.vpc_name}-igw"
 
   # Base tags (always applied)
   base_tags = {
@@ -29,12 +29,13 @@ locals {
     Region      = var.aws_region
   }
 
-  # Customer-specific tags (only for dedicated VPCs)
-  customer_tags = local.is_customer_vpc ? {
-    CustomerId       = var.customer_id
-    CustomerName     = var.customer_name
-    ArchitectureType = var.architecture_type
-    PlanTier         = var.plan_tier
+  # Customer-specific tags
+  customer_tags = local.has_customer ? {
+    Customer = var.customer_name
+  } : {}
+
+  project_tags = local.has_project ? {
+    Project = var.project_name
   } : {}
 
   # IGW-specific tags

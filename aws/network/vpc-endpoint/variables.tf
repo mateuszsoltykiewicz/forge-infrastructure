@@ -144,7 +144,7 @@ variable "route_table_ids" {
 variable "dns_options" {
   description = "DNS options for the endpoint"
   type = object({
-    dns_record_ip_type                             = optional(string, "ipv4")  # ipv4, dualstack, service-defined, ipv6
+    dns_record_ip_type                             = optional(string, "ipv4") # ipv4, dualstack, service-defined, ipv6
     private_dns_only_for_inbound_resolver_endpoint = optional(bool, false)
   })
   default = {

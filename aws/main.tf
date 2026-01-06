@@ -16,12 +16,12 @@
 module "vpc" {
   source = "./network/vpc"
 
-  vpc_name       = local.vpc_name
-  cidr_block     = var.vpc_cidr
-  workspace      = var.workspace
-  environment    = "shared"  # Single VPC shared by all environments
-  customer_name  = var.customer_name
-  project_name   = var.project_name
+  vpc_name      = local.vpc_name
+  cidr_block    = var.vpc_cidr
+  workspace     = var.workspace
+  environment   = "shared" # Single VPC shared by all environments
+  customer_name = var.customer_name
+  project_name  = var.project_name
 
   common_tags = local.common_tags
 }
@@ -33,11 +33,11 @@ module "vpc" {
 module "eks" {
   source = "./compute/eks"
 
-  workspace           = var.workspace
-  environment         = "shared"  # Single cluster shared by all environments
-  customer_name       = var.customer_name != null ? var.customer_name : ""
-  project_name        = var.project_name != null ? var.project_name : ""
-  kubernetes_version  = var.eks_kubernetes_version
+  workspace          = var.workspace
+  environment        = "shared" # Single cluster shared by all environments
+  customer_name      = var.customer_name != null ? var.customer_name : ""
+  project_name       = var.project_name != null ? var.project_name : ""
+  kubernetes_version = var.eks_kubernetes_version
 
   # Namespaces for environment isolation
   namespaces = local.eks_namespaces
@@ -72,31 +72,31 @@ module "alb" {
   project_name  = var.project_name
 
   # ALB configuration
-  internal        = false  # Public-facing
+  internal        = false # Public-facing
   ip_address_type = "ipv4"
 
   # HTTPS configuration
   https_listener = {
-    enabled         = true
-    port            = 443
-    ssl_policy      = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-    certificate_arn = var.alb_certificate_arn
+    enabled          = true
+    port             = 443
+    ssl_policy       = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+    certificate_arn  = var.alb_certificate_arn
     target_group_key = "eks"
   }
 
   # HTTP listener (redirect to HTTPS)
   http_listener = {
-    enabled       = true
-    port          = 80
+    enabled        = true
+    port           = 80
     redirect_https = true
   }
 
   # Target group pointing to EKS NodePort
   target_groups = {
     eks = {
-      port            = each.value.nodeport
-      protocol        = "HTTP"
-      target_type     = "instance"
+      port        = each.value.nodeport
+      protocol    = "HTTP"
+      target_type = "instance"
       health_check = {
         enabled             = true
         path                = "/health"
@@ -138,16 +138,16 @@ module "rds_production" {
   customer_name = var.customer_name != null ? var.customer_name : ""
   project_name  = var.project_name != null ? var.project_name : ""
 
-  instance_class      = var.rds_instance_class
-  allocated_storage   = var.rds_allocated_storage
-  engine_version      = "16.4"
+  instance_class    = var.rds_instance_class
+  allocated_storage = var.rds_allocated_storage
+  engine_version    = "16.4"
 
   # Resource sharing configuration
   resource_sharing         = local.production_db_config.resource_sharing
   shared_with_environments = local.production_db_config.shared_with_environments
 
   # High availability for production
-  multi_az               = true
+  multi_az                = true
   backup_retention_period = 30
 
   tags = merge(
@@ -171,15 +171,15 @@ module "rds_staging" {
   customer_name = var.customer_name != null ? var.customer_name : ""
   project_name  = var.project_name != null ? var.project_name : ""
 
-  instance_class      = "db.r8g.large"  # Smaller instance for staging
-  allocated_storage   = 100
-  engine_version      = "16.4"
+  instance_class    = "db.r8g.large" # Smaller instance for staging
+  allocated_storage = 100
+  engine_version    = "16.4"
 
   # Dedicated staging database
   resource_sharing         = "dedicated"
   shared_with_environments = []
 
-  multi_az               = false
+  multi_az                = false
   backup_retention_period = 7
 
   tags = merge(
@@ -203,15 +203,15 @@ module "rds_development" {
   customer_name = var.customer_name != null ? var.customer_name : ""
   project_name  = var.project_name != null ? var.project_name : ""
 
-  instance_class      = "db.r8g.large"  # Smaller instance for dev
-  allocated_storage   = 50
-  engine_version      = "16.4"
+  instance_class    = "db.r8g.large" # Smaller instance for dev
+  allocated_storage = 50
+  engine_version    = "16.4"
 
   # Dedicated development database
   resource_sharing         = "dedicated"
   shared_with_environments = []
 
-  multi_az               = false
+  multi_az                = false
   backup_retention_period = 3
 
   tags = merge(
@@ -240,9 +240,9 @@ module "redis_production" {
   customer_name = var.customer_name != null ? var.customer_name : ""
   project_name  = var.project_name != null ? var.project_name : ""
 
-  node_type           = var.redis_node_type
-  num_cache_clusters  = var.redis_num_cache_nodes
-  engine_version      = "7.1"
+  node_type          = var.redis_node_type
+  num_cache_clusters = var.redis_num_cache_nodes
+  engine_version     = "7.1"
 
   # Resource sharing configuration
   resource_sharing         = local.production_redis_config.resource_sharing
@@ -250,7 +250,7 @@ module "redis_production" {
 
   # High availability for production
   automatic_failover_enabled = true
-  multi_az_enabled          = true
+  multi_az_enabled           = true
 
   tags = merge(
     local.common_tags,
@@ -274,16 +274,16 @@ module "redis_staging" {
   customer_name = var.customer_name != null ? var.customer_name : ""
   project_name  = var.project_name != null ? var.project_name : ""
 
-  node_type           = "cache.r7g.large"  # Smaller instance for staging
-  num_cache_clusters  = 1
-  engine_version      = "7.1"
+  node_type          = "cache.r7g.large" # Smaller instance for staging
+  num_cache_clusters = 1
+  engine_version     = "7.1"
 
   # Dedicated staging Redis
   resource_sharing         = "dedicated"
   shared_with_environments = []
 
   automatic_failover_enabled = false
-  multi_az_enabled          = false
+  multi_az_enabled           = false
 
   tags = merge(
     local.common_tags,
@@ -307,16 +307,16 @@ module "redis_development" {
   customer_name = var.customer_name != null ? var.customer_name : ""
   project_name  = var.project_name != null ? var.project_name : ""
 
-  node_type           = "cache.r7g.large"  # Smaller instance for dev
-  num_cache_clusters  = 1
-  engine_version      = "7.1"
+  node_type          = "cache.r7g.large" # Smaller instance for dev
+  num_cache_clusters = 1
+  engine_version     = "7.1"
 
   # Dedicated development Redis
   resource_sharing         = "dedicated"
   shared_with_environments = []
 
   automatic_failover_enabled = false
-  multi_az_enabled          = false
+  multi_az_enabled           = false
 
   tags = merge(
     local.common_tags,
@@ -344,10 +344,10 @@ module "vpc_endpoint_s3" {
   customer_name = var.customer_name
   project_name  = var.project_name
 
-  service_name     = local.vpc_endpoints_config["s3"].service_name
-  endpoint_type    = local.vpc_endpoints_config["s3"].endpoint_type
-  vpc_id           = module.vpc.vpc_id
-  route_table_ids  = module.eks.private_route_table_ids
+  service_name    = local.vpc_endpoints_config["s3"].service_name
+  endpoint_type   = local.vpc_endpoints_config["s3"].endpoint_type
+  vpc_id          = module.vpc.vpc_id
+  route_table_ids = module.eks.private_route_table_ids
 
   tags = merge(
     local.common_tags,
@@ -683,16 +683,16 @@ module "client_vpn" {
   project_name  = var.project_name
 
   # VPN Configuration
-  client_cidr_block = var.vpn_client_cidr_block
-  dns_servers       = var.vpn_dns_servers
-  split_tunnel      = var.vpn_split_tunnel
-  transport_protocol = var.vpn_transport_protocol
+  client_cidr_block     = var.vpn_client_cidr_block
+  dns_servers           = var.vpn_dns_servers
+  split_tunnel          = var.vpn_split_tunnel
+  transport_protocol    = var.vpn_transport_protocol
   session_timeout_hours = var.vpn_session_timeout_hours
 
   # Authentication (Mutual TLS by default)
-  authentication_type           = var.vpn_authentication_type
-  server_certificate_arn        = var.vpn_server_certificate_arn
-  client_root_certificate_arn   = var.vpn_client_root_certificate_arn
+  authentication_type         = var.vpn_authentication_type
+  server_certificate_arn      = var.vpn_server_certificate_arn
+  client_root_certificate_arn = var.vpn_client_root_certificate_arn
 
   # Network Configuration
   vpc_id         = module.vpc.vpc_id
@@ -703,8 +703,8 @@ module "client_vpn" {
   authorize_all_groups = var.vpn_authorize_all_groups
 
   # Connection Logging
-  enable_connection_logs          = var.vpn_enable_connection_logs
-  cloudwatch_log_retention_days   = var.vpn_cloudwatch_log_retention_days
+  enable_connection_logs        = var.vpn_enable_connection_logs
+  cloudwatch_log_retention_days = var.vpn_cloudwatch_log_retention_days
 
   # Security Group
   create_security_group = true

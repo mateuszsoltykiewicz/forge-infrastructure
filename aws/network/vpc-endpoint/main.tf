@@ -15,10 +15,10 @@ resource "aws_vpc_endpoint" "this" {
   auto_accept       = var.auto_accept
 
   # Interface and GatewayLoadBalancer endpoint configuration
-  subnet_ids         = var.endpoint_type != "Gateway" ? var.subnet_ids : null
-  security_group_ids = var.endpoint_type == "Interface" ? var.security_group_ids : null
+  subnet_ids          = var.endpoint_type != "Gateway" ? var.subnet_ids : null
+  security_group_ids  = var.endpoint_type == "Interface" ? var.security_group_ids : null
   private_dns_enabled = var.endpoint_type == "Interface" ? var.private_dns_enabled : null
-  ip_address_type    = var.endpoint_type == "Interface" ? var.ip_address_type : null
+  ip_address_type     = var.endpoint_type == "Interface" ? var.ip_address_type : null
 
   # Gateway endpoint configuration
   route_table_ids = var.endpoint_type == "Gateway" ? var.route_table_ids : null

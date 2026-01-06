@@ -10,16 +10,16 @@ locals {
   # ------------------------------------------------------------------------------
 
   # Determine cluster ownership model
-  is_customer_cluster = var.customer_id != ""
-  is_project_cluster  = var.project_name != ""
+  has_customer = var.customer_name != null && var.customer_name != ""
+  has_project  = var.project_name != null && var.project_name != ""
 
   # Multi-tenant cluster naming conventions:
   # 1. Shared (platform): forge-{environment}-redis
-  # 2. Customer-dedicated: {customer_name}-{region}-redis
-  # 3. Customer + Project: {customer_name}-{project_name}-{region}-redis
+  # 2. Customer-dedicated: forge-{environment}-{customer}-redis
+  # 3. Project-isolated: forge-{environment}-{customer}-{project}-redis
   replication_group_id = var.replication_group_id_override != "" ? var.replication_group_id_override : (
-    local.is_customer_cluster && local.is_project_cluster ? "${var.customer_name}-${var.project_name}-${var.aws_region}-redis" :
-    local.is_customer_cluster ? "${var.customer_name}-${var.aws_region}-redis" :
+    local.has_project ? "forge-${var.environment}-${var.customer_name}-${var.project_name}-redis" :
+    local.has_customer ? "forge-${var.environment}-${var.customer_name}-redis" :
     "forge-${var.environment}-redis"
   )
 
@@ -43,11 +43,11 @@ locals {
   # ------------------------------------------------------------------------------
 
   # Multi-tenant tags (Customer + Project)
-  customer_tags = local.is_customer_cluster ? {
+  customer_tags = local.has_customer ? {
     Customer = var.customer_name
   } : {}
 
-  project_tags = local.is_project_cluster ? {
+  project_tags = local.has_project ? {
     Project = var.project_name
   } : {}
 

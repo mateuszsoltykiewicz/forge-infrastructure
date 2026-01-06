@@ -9,32 +9,26 @@ locals {
   # ========================================
 
   # Determine cluster type based on customer_name and project_name
-  is_customer_cluster = var.customer_name != ""
-  is_project_cluster  = var.customer_name != "" && var.project_name != ""
+  has_customer = var.customer_name != null && var.customer_name != ""
+  has_project  = var.project_name != null && var.project_name != ""
 
   # Generate ALB name based on multi-tenant context (max 32 characters):
   # - Shared: forge-{environment}-alb
-  # - Customer: forge-{environment}-{customer_name}-alb
-  # - Project: forge-{environment}-{customer_name}-{project_name}-alb
+  # - Customer: forge-{environment}-{customer}-alb
+  # - Project: forge-{environment}-{customer}-{project}-alb
   alb_name = var.name != null ? var.name : substr(
-    local.is_project_cluster
-    ? "forge-${var.environment}-${var.customer_name}-${var.project_name}-alb"
-    : (local.is_customer_cluster
-      ? "forge-${var.environment}-${var.customer_name}-alb"
-      : "forge-${var.environment}-alb"
-    ),
+    local.has_project ? "forge-${var.environment}-${var.customer_name}-${var.project_name}-alb" :
+    local.has_customer ? "forge-${var.environment}-${var.customer_name}-alb" :
+    "forge-${var.environment}-alb",
     0,
     32
   )
 
   # Target group name prefix (max 32 characters, leave room for hash)
   tg_name_prefix = substr(
-    local.is_project_cluster
-    ? "forge-${var.environment}-${var.customer_name}-${var.project_name}"
-    : (local.is_customer_cluster
-      ? "forge-${var.environment}-${var.customer_name}"
-      : "forge-${var.environment}"
-    ),
+    local.has_project ? "forge-${var.environment}-${var.customer_name}-${var.project_name}" :
+    local.has_customer ? "forge-${var.environment}-${var.customer_name}" :
+    "forge-${var.environment}",
     0,
     32
   )
@@ -107,11 +101,11 @@ locals {
   }
 
   # Multi-tenant tags
-  customer_tags = local.is_customer_cluster ? {
+  customer_tags = local.has_customer ? {
     Customer = var.customer_name
   } : {}
 
-  project_tags = local.is_project_cluster ? {
+  project_tags = local.has_project ? {
     Project = var.project_name
   } : {}
 

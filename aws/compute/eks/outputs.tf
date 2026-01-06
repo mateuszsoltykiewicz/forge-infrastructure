@@ -256,7 +256,7 @@ output "cluster_autoscaler_helm_values" {
     autoDiscovery = {
       clusterName = module.eks.cluster_name
     }
-    awsRegion = "<AWS_REGION>"  # Set this to your AWS region (e.g., us-east-1)
+    awsRegion = "<AWS_REGION>" # Set this to your AWS region (e.g., us-east-1)
     rbac = {
       serviceAccount = {
         annotations = {

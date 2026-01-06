@@ -51,7 +51,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
       sse_algorithm     = var.encryption_type
       kms_master_key_id = var.encryption_type == "aws:kms" ? var.kms_key_id : null
     }
-    
+
     bucket_key_enabled = var.encryption_type == "aws:kms" ? var.bucket_key_enabled : null
   }
 }
@@ -80,7 +80,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "main" {
 
   dynamic "rule" {
     for_each = var.lifecycle_rules
-    
+
     content {
       id     = rule.value.id
       status = rule.value.enabled ? "Enabled" : "Disabled"
@@ -88,7 +88,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "main" {
       # Filter (optional prefix)
       dynamic "filter" {
         for_each = rule.value.prefix != null ? [1] : []
-        
+
         content {
           prefix = rule.value.prefix
         }
@@ -97,7 +97,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "main" {
       # Abort incomplete multipart uploads
       dynamic "abort_incomplete_multipart_upload" {
         for_each = rule.value.abort_incomplete_multipart_upload_days != null ? [1] : []
-        
+
         content {
           days_after_initiation = rule.value.abort_incomplete_multipart_upload_days
         }
@@ -106,7 +106,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "main" {
       # Current version expiration
       dynamic "expiration" {
         for_each = rule.value.expiration != null ? [rule.value.expiration] : []
-        
+
         content {
           days                         = expiration.value.days
           expired_object_delete_marker = expiration.value.expired_object_delete_marker
@@ -116,7 +116,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "main" {
       # Noncurrent version expiration
       dynamic "noncurrent_version_expiration" {
         for_each = rule.value.noncurrent_version_expiration != null ? [rule.value.noncurrent_version_expiration] : []
-        
+
         content {
           noncurrent_days = noncurrent_version_expiration.value.noncurrent_days
         }
@@ -125,7 +125,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "main" {
       # Current version transitions
       dynamic "transition" {
         for_each = rule.value.transition != null ? rule.value.transition : []
-        
+
         content {
           days          = transition.value.days
           storage_class = transition.value.storage_class
@@ -135,7 +135,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "main" {
       # Noncurrent version transitions
       dynamic "noncurrent_version_transition" {
         for_each = rule.value.noncurrent_version_transition != null ? rule.value.noncurrent_version_transition : []
-        
+
         content {
           noncurrent_days = noncurrent_version_transition.value.noncurrent_days
           storage_class   = noncurrent_version_transition.value.storage_class
@@ -173,7 +173,7 @@ resource "aws_s3_bucket_replication_configuration" "main" {
 
   dynamic "rule" {
     for_each = var.replication_rules
-    
+
     content {
       id       = rule.value.id
       status   = rule.value.status
@@ -182,7 +182,7 @@ resource "aws_s3_bucket_replication_configuration" "main" {
       # Filter (optional prefix)
       dynamic "filter" {
         for_each = rule.value.prefix != null ? [1] : []
-        
+
         content {
           prefix = rule.value.prefix
         }
@@ -196,7 +196,7 @@ resource "aws_s3_bucket_replication_configuration" "main" {
         # Encryption configuration for replica
         dynamic "encryption_configuration" {
           for_each = rule.value.destination.replica_kms_key_id != null ? [1] : []
-          
+
           content {
             replica_kms_key_id = rule.value.destination.replica_kms_key_id
           }
@@ -206,11 +206,11 @@ resource "aws_s3_bucket_replication_configuration" "main" {
       # Source selection criteria for SSE-KMS encrypted objects
       dynamic "source_selection_criteria" {
         for_each = rule.value.source_selection_criteria != null ? [rule.value.source_selection_criteria] : []
-        
+
         content {
           dynamic "sse_kms_encrypted_objects" {
             for_each = source_selection_criteria.value.sse_kms_encrypted_objects != null ? [source_selection_criteria.value.sse_kms_encrypted_objects] : []
-            
+
             content {
               status = sse_kms_encrypted_objects.value.enabled ? "Enabled" : "Disabled"
             }
@@ -250,7 +250,7 @@ resource "aws_s3_bucket_cors_configuration" "main" {
 
   dynamic "cors_rule" {
     for_each = var.cors_rules
-    
+
     content {
       allowed_headers = cors_rule.value.allowed_headers
       allowed_methods = cors_rule.value.allowed_methods
@@ -276,7 +276,7 @@ resource "aws_s3_bucket_intelligent_tiering_configuration" "main" {
   # Archive Access tier (90-730 days)
   dynamic "tiering" {
     for_each = var.intelligent_tiering_archive_days > 0 ? [1] : []
-    
+
     content {
       access_tier = "ARCHIVE_ACCESS"
       days        = var.intelligent_tiering_archive_days
@@ -286,7 +286,7 @@ resource "aws_s3_bucket_intelligent_tiering_configuration" "main" {
   # Deep Archive Access tier (180-730 days)
   dynamic "tiering" {
     for_each = var.intelligent_tiering_deep_archive_days > 0 ? [1] : []
-    
+
     content {
       access_tier = "DEEP_ARCHIVE_ACCESS"
       days        = var.intelligent_tiering_deep_archive_days

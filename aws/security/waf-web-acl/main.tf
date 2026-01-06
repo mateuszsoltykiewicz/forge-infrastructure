@@ -275,28 +275,28 @@ resource "aws_wafv2_web_acl" "main" {
       statement {
         dynamic "byte_match_statement" {
           for_each = try([rule.value.statement.byte_match_statement], [])
-          
+
           content {
             search_string = byte_match_statement.value.search_string
-            
+
             field_to_match {
               dynamic "uri_path" {
                 for_each = try([byte_match_statement.value.field_to_match.uri_path], [])
                 content {}
               }
-              
+
               dynamic "query_string" {
                 for_each = try([byte_match_statement.value.field_to_match.query_string], [])
                 content {}
               }
-              
+
               dynamic "single_header" {
                 for_each = try([byte_match_statement.value.field_to_match.single_header], [])
                 content {
                   name = single_header.value.name
                 }
               }
-              
+
               dynamic "body" {
                 for_each = try([byte_match_statement.value.field_to_match.body], [])
                 content {}
@@ -307,7 +307,7 @@ resource "aws_wafv2_web_acl" "main" {
 
             dynamic "text_transformation" {
               for_each = byte_match_statement.value.text_transformations
-              
+
               content {
                 priority = text_transformation.value.priority
                 type     = text_transformation.value.type

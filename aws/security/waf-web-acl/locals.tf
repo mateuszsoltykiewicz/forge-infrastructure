@@ -3,102 +3,107 @@
 # ========================================
 
 locals {
+  # Multi-tenant detection
+  has_customer = var.customer_name != null && var.customer_name != ""
+  has_project  = var.project_name != null && var.project_name != ""
+
   # WAF naming
+  # 1. Shared: forge-{environment}-waf
+  # 2. Customer: forge-{environment}-{customer}-waf
+  # 3. Project: forge-{environment}-{customer}-{project}-waf
   waf_name = var.name != null ? var.name : (
-    var.architecture_type == "forge" ? (
-      "forge-${var.environment}-waf"
-    ) : (
-      "${var.customer_id}-${var.region}-waf"
-    )
+    local.has_project ? "forge-${var.environment}-${var.customer_name}-${var.project_name}-waf" :
+    local.has_customer ? "forge-${var.environment}-${var.customer_name}-waf" :
+    "forge-${var.environment}-waf"
   )
 
   # Log destination naming
   log_group_name = "/aws/wafv2/${local.waf_name}"
 
   # Flags for enabled features
-  has_ip_allow_list    = length(var.ip_allow_list) > 0
-  has_ip_block_list    = length(var.ip_block_list) > 0
-  has_geo_blocking     = var.geo_blocking_enabled && length(var.geo_blocking_countries) > 0
-  has_custom_rules     = length(var.custom_rules) > 0
+  has_ip_allow_list       = length(var.ip_allow_list) > 0
+  has_ip_block_list       = length(var.ip_block_list) > 0
+  has_geo_blocking        = var.geo_blocking_enabled && length(var.geo_blocking_countries) > 0
+  has_custom_rules        = length(var.custom_rules) > 0
   should_create_log_group = var.enable_logging && var.log_destination_type == "cloudwatch" && var.log_destination_arn == null
 
   # AWS Managed Rule Groups
   managed_rule_groups = {
     core_rule_set = {
-      enabled  = var.enable_aws_managed_rules_core
-      name     = "AWSManagedRulesCommonRuleSet"
-      vendor   = "AWS"
-      priority = 20
+      enabled        = var.enable_aws_managed_rules_core
+      name           = "AWSManagedRulesCommonRuleSet"
+      vendor         = "AWS"
+      priority       = 20
       excluded_rules = [] # Can be customized per rule group
     }
     known_bad_inputs = {
-      enabled  = var.enable_aws_managed_rules_known_bad_inputs
-      name     = "AWSManagedRulesKnownBadInputsRuleSet"
-      vendor   = "AWS"
-      priority = 30
+      enabled        = var.enable_aws_managed_rules_known_bad_inputs
+      name           = "AWSManagedRulesKnownBadInputsRuleSet"
+      vendor         = "AWS"
+      priority       = 30
       excluded_rules = []
     }
     sql_injection = {
-      enabled  = var.enable_aws_managed_rules_sqli
-      name     = "AWSManagedRulesSQLiRuleSet"
-      vendor   = "AWS"
-      priority = 40
+      enabled        = var.enable_aws_managed_rules_sqli
+      name           = "AWSManagedRulesSQLiRuleSet"
+      vendor         = "AWS"
+      priority       = 40
       excluded_rules = []
     }
     linux_os = {
-      enabled  = var.enable_aws_managed_rules_linux
-      name     = "AWSManagedRulesLinuxRuleSet"
-      vendor   = "AWS"
-      priority = 50
+      enabled        = var.enable_aws_managed_rules_linux
+      name           = "AWSManagedRulesLinuxRuleSet"
+      vendor         = "AWS"
+      priority       = 50
       excluded_rules = []
     }
     windows_os = {
-      enabled  = var.enable_aws_managed_rules_windows
-      name     = "AWSManagedRulesWindowsRuleSet"
-      vendor   = "AWS"
-      priority = 51
+      enabled        = var.enable_aws_managed_rules_windows
+      name           = "AWSManagedRulesWindowsRuleSet"
+      vendor         = "AWS"
+      priority       = 51
       excluded_rules = []
     }
     php_app = {
-      enabled  = var.enable_aws_managed_rules_php
-      name     = "AWSManagedRulesPHPRuleSet"
-      vendor   = "AWS"
-      priority = 60
+      enabled        = var.enable_aws_managed_rules_php
+      name           = "AWSManagedRulesPHPRuleSet"
+      vendor         = "AWS"
+      priority       = 60
       excluded_rules = []
     }
     wordpress = {
-      enabled  = var.enable_aws_managed_rules_wordpress
-      name     = "AWSManagedRulesWordPressRuleSet"
-      vendor   = "AWS"
-      priority = 61
+      enabled        = var.enable_aws_managed_rules_wordpress
+      name           = "AWSManagedRulesWordPressRuleSet"
+      vendor         = "AWS"
+      priority       = 61
       excluded_rules = []
     }
     anonymous_ip = {
-      enabled  = var.enable_aws_managed_rules_anonymous_ip
-      name     = "AWSManagedRulesAnonymousIpList"
-      vendor   = "AWS"
-      priority = 70
+      enabled        = var.enable_aws_managed_rules_anonymous_ip
+      name           = "AWSManagedRulesAnonymousIpList"
+      vendor         = "AWS"
+      priority       = 70
       excluded_rules = []
     }
     ip_reputation = {
-      enabled  = var.enable_aws_managed_rules_ip_reputation
-      name     = "AWSManagedRulesAmazonIpReputationList"
-      vendor   = "AWS"
-      priority = 71
+      enabled        = var.enable_aws_managed_rules_ip_reputation
+      name           = "AWSManagedRulesAmazonIpReputationList"
+      vendor         = "AWS"
+      priority       = 71
       excluded_rules = []
     }
     bot_control = {
-      enabled  = var.enable_aws_managed_rules_bot_control
-      name     = "AWSManagedRulesBotControlRuleSet"
-      vendor   = "AWS"
-      priority = 80
+      enabled        = var.enable_aws_managed_rules_bot_control
+      name           = "AWSManagedRulesBotControlRuleSet"
+      vendor         = "AWS"
+      priority       = 80
       excluded_rules = []
     }
     account_takeover = {
-      enabled  = var.enable_aws_managed_rules_account_takeover
-      name     = "AWSManagedRulesATPRuleSet"
-      vendor   = "AWS"
-      priority = 81
+      enabled        = var.enable_aws_managed_rules_account_takeover
+      name           = "AWSManagedRulesATPRuleSet"
+      vendor         = "AWS"
+      priority       = 81
       excluded_rules = []
     }
   }
@@ -152,7 +157,7 @@ locals {
   )
 
   # Validation flags
-  has_alb_association = var.associate_alb && var.alb_arn != null
+  has_alb_association           = var.associate_alb && var.alb_arn != null
   cloudfront_requires_us_east_1 = var.scope == "CLOUDFRONT" && var.region != "us-east-1"
 }
 
