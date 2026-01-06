@@ -48,6 +48,7 @@ locals {
   merged_tags = merge(
     local.base_tags,
     local.customer_tags,
+    local.project_tags,
     var.merged_tags
   )
 }

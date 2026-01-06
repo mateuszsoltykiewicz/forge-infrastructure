@@ -9,9 +9,6 @@ locals {
   # Parameter Path Generation
   # ------------------------------------------------------------------------------
 
-  # Determine if this is shared or dedicated architecture
-  is_shared_architecture = var.architecture_type == "shared"
-
   # Automatic hierarchical path: /ENV/resource-type/resource-id/parameter-name
   # Example: /production/database/forge-production-db/host
   automatic_path = join("/", compact([
@@ -36,6 +33,10 @@ locals {
   # Tagging Strategy
   # ------------------------------------------------------------------------------
 
+  # Detect multi-tenant context
+  has_customer = var.customer_name != null && var.customer_name != ""
+  has_project  = var.project_name != null && var.project_name != ""
+
   # Base tags applied to all resources
   base_tags = {
     Environment     = var.environment
@@ -47,18 +48,22 @@ locals {
     ResourceType    = var.resource_type
   }
 
-  # Customer-specific tags (only applied for dedicated architectures)
-  customer_tags = !local.is_shared_architecture ? {
-    CustomerId       = var.customer_id
-    CustomerName     = var.customer_name
-    ArchitectureType = var.architecture_type
-    PlanTier         = var.plan_tier
+  # Customer-specific tags
+  customer_tags = local.has_customer ? {
+    CustomerName = var.customer_name
+    PlanTier     = var.plan_tier
+  } : {}
+
+  # Project-specific tags
+  project_tags = local.has_project ? {
+    ProjectName = var.project_name
   } : {}
 
   # Merge all tags
   merged_tags = merge(
     local.base_tags,
     local.customer_tags,
+    local.project_tags,
     var.tags
   )
 }

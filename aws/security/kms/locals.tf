@@ -159,18 +159,21 @@ locals {
     MultiRegion     = var.multi_region ? "true" : "false"
   }
 
-  # Customer-specific tags (only for dedicated architectures)
-  customer_tags = var.architecture_type != "shared" ? {
-    CustomerId       = var.customer_id
-    CustomerName     = var.customer_name
-    ArchitectureType = var.architecture_type
-    PlanTier         = var.plan_tier
+  # Customer-specific tags
+  customer_tags = local.has_customer ? {
+    CustomerName = var.customer_name
+  } : {}
+
+  # Project-specific tags
+  project_tags = local.has_project ? {
+    ProjectName = var.project_name
   } : {}
 
   # Merge all tags
   merged_tags = merge(
     local.base_tags,
     local.customer_tags,
+    local.project_tags,
     var.tags
   )
 }

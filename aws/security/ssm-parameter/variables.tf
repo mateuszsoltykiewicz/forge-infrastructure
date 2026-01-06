@@ -8,16 +8,6 @@
 # Customer Context Variables
 # ------------------------------------------------------------------------------
 
-variable "customer_id" {
-  description = "UUID of the customer (use 00000000-0000-0000-0000-000000000000 for shared infrastructure)"
-  type        = string
-
-  validation {
-    condition     = can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.customer_id))
-    error_message = "customer_id must be a valid UUID format"
-  }
-}
-
 variable "customer_name" {
   description = "Name of the customer (used in resource naming, e.g., 'forge', 'acme-corp')"
   type        = string
@@ -28,14 +18,10 @@ variable "customer_name" {
   }
 }
 
-variable "architecture_type" {
-  description = "Architecture type: 'shared' (multi-tenant), 'dedicated_single_tenant', or 'dedicated_vpc'"
+variable "project_name" {
+  description = "Project name for multi-tenant deployments"
   type        = string
-
-  validation {
-    condition     = contains(["shared", "dedicated_single_tenant", "dedicated_vpc"], var.architecture_type)
-    error_message = "architecture_type must be one of: shared, dedicated_single_tenant, dedicated_vpc"
-  }
+  default     = null
 }
 
 variable "plan_tier" {
