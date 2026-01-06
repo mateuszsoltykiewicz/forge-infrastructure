@@ -5,47 +5,24 @@
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# Customer Context Variables
+# Multi-Tenant Context
 # ------------------------------------------------------------------------------
 
-variable "customer_id" {
-  description = "UUID of the customer (use 00000000-0000-0000-0000-000000000000 for shared infrastructure)"
+variable "workspace" {
+  description = "Workspace name for resource discovery (e.g., 'forge-platform')"
   type        = string
-
-  validation {
-    condition     = can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.customer_id))
-    error_message = "customer_id must be a valid UUID format"
-  }
 }
 
 variable "customer_name" {
-  description = "Name of the customer (used in resource naming, e.g., 'forge', 'acme-corp')"
+  description = "Customer name for resource naming (null for shared infrastructure)"
   type        = string
-
-  validation {
-    condition     = can(regex("^[a-z0-9-]+$", var.customer_name))
-    error_message = "customer_name must contain only lowercase letters, numbers, and hyphens"
-  }
+  default     = null
 }
 
-variable "architecture_type" {
-  description = "Architecture type: 'shared' (multi-tenant), 'dedicated_single_tenant', or 'dedicated_vpc'"
+variable "project_name" {
+  description = "Project name for resource naming (null for customer or shared infrastructure)"
   type        = string
-
-  validation {
-    condition     = contains(["shared", "dedicated_single_tenant", "dedicated_vpc"], var.architecture_type)
-    error_message = "architecture_type must be one of: shared, dedicated_single_tenant, dedicated_vpc"
-  }
-}
-
-variable "plan_tier" {
-  description = "Customer plan tier: basic, pro, enterprise, or platform"
-  type        = string
-
-  validation {
-    condition     = contains(["basic", "pro", "enterprise", "platform"], var.plan_tier)
-    error_message = "plan_tier must be one of: basic, pro, enterprise, platform"
-  }
+  default     = null
 }
 
 # ------------------------------------------------------------------------------

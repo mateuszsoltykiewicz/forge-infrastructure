@@ -35,10 +35,10 @@ variable "workspace" {
 
 variable "environment" {
   type        = string
-  description = "Environment identifier (e.g., 'prod', 'staging', 'dev')."
+  description = "Environment identifier (e.g., 'prod', 'staging', 'dev', 'shared')."
   validation {
-    condition     = contains(["prod", "staging", "dev"], var.environment)
-    error_message = "Environment must be one of: prod, staging, dev."
+    condition     = contains(["prod", "staging", "dev", "shared"], var.environment)
+    error_message = "Environment must be one of: prod, staging, dev, shared."
   }
 }
 

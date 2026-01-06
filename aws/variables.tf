@@ -236,3 +236,73 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# ------------------------------------------------------------------------------
+# VPC Endpoints Configuration (Future Private Deployment)
+# ------------------------------------------------------------------------------
+
+variable "enable_vpc_endpoints" {
+  description = "Enable VPC Endpoints for private AWS service access (default: false)"
+  type        = bool
+  default     = false
+}
+
+# ------------------------------------------------------------------------------
+# VPN Configuration (Future Private Deployment)
+# ------------------------------------------------------------------------------
+
+variable "enable_vpn" {
+  description = "Enable AWS Client VPN Endpoint for private access (default: false)"
+  type        = bool
+  default     = false
+}
+
+variable "vpn_client_cidr" {
+  description = "CIDR block for VPN clients (e.g., '172.16.0.0/22')"
+  type        = string
+  default     = "172.16.0.0/22"
+
+  validation {
+    condition     = can(cidrnetmask(var.vpn_client_cidr))
+    error_message = "VPN client CIDR must be a valid CIDR block."
+  }
+}
+
+variable "vpn_dns_servers" {
+  description = "List of DNS servers for VPN clients (defaults to VPC DNS)"
+  type        = list(string)
+  default     = []
+}
+
+# ------------------------------------------------------------------------------
+# EKS Endpoint Access Configuration
+# ------------------------------------------------------------------------------
+
+variable "eks_endpoint_public_access" {
+  description = "Enable public access to EKS API endpoint (default: true, set false when VPN enabled)"
+  type        = bool
+  default     = true
+}
+
+variable "eks_endpoint_private_access" {
+  description = "Enable private access to EKS API endpoint (default: true)"
+  type        = bool
+  default     = true
+}
+
+variable "eks_public_access_cidrs" {
+  description = "CIDR blocks allowed to access EKS public endpoint (default: ['0.0.0.0/0'])"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+# ------------------------------------------------------------------------------
+# AWS Region (for VPC Endpoints)
+# ------------------------------------------------------------------------------
+
+variable "aws_region" {
+  description = "AWS region for deployment (e.g., 'us-east-1')"
+  type        = string
+  default     = "us-east-1"
+}
+

@@ -6,11 +6,12 @@
 
 locals {
   # ------------------------------------------------------------------------------
-  # Architecture Detection
+  # Multi-Tenant Detection
   # ------------------------------------------------------------------------------
 
-  # Determine if this is shared or dedicated architecture
-  is_shared_architecture = var.architecture_type == "shared"
+  # Determine tenancy level
+  has_customer = var.customer_name != null
+  has_project  = var.project_name != null
 
   # ------------------------------------------------------------------------------
   # Service Name Processing
@@ -31,16 +32,19 @@ locals {
   ) : var.service_name
 
   # ------------------------------------------------------------------------------
-  # Endpoint Naming
+  # Endpoint Naming (Multi-Tenant Pattern)
   # ------------------------------------------------------------------------------
 
-  # Shared architecture: forge-{environment}-{service}-vpce
-  # Dedicated architecture: {customer_name}-{region}-{service}-vpce
-  endpoint_name = local.is_shared_architecture ? (
-    "forge-${var.environment}-${local.service_short_name}-vpce"
-  ) : (
-    "${var.customer_name}-${var.region}-${local.service_short_name}-vpce"
+  # Three scenarios:
+  # 1. Shared: forge-{environment}-{service}-vpce
+  # 2. Customer: forge-{environment}-{customer}-{service}-vpce
+  # 3. Project: forge-{environment}-{customer}-{project}-{service}-vpce
+  
+  name_prefix = local.has_project ? "forge-${var.environment}-${var.customer_name}-${var.project_name}" : (
+    local.has_customer ? "forge-${var.environment}-${var.customer_name}" : "forge-${var.environment}"
   )
+  
+  endpoint_name = "${local.name_prefix}-${local.service_short_name}-vpce"
 
   # ------------------------------------------------------------------------------
   # Endpoint Type Validation
@@ -73,31 +77,33 @@ locals {
   has_route_tables = length(var.route_table_ids) > 0
 
   # ------------------------------------------------------------------------------
-  # Tagging Strategy
+  # Tagging Strategy (Multi-Tenant)
   # ------------------------------------------------------------------------------
 
   # Base tags applied to all resources
   base_tags = {
     Environment     = var.environment
-    ManagedBy       = "terraform"
+    ManagedBy       = "Terraform"
     TerraformModule = "network/vpc-endpoint"
-    Region          = var.region
+    Workspace       = var.workspace
     ServiceName     = local.service_short_name
     EndpointType    = var.endpoint_type
   }
 
-  # Customer-specific tags (only applied for dedicated architectures)
-  customer_tags = !local.is_shared_architecture ? {
-    CustomerId       = var.customer_id
-    CustomerName     = var.customer_name
-    ArchitectureType = var.architecture_type
-    PlanTier         = var.plan_tier
+  # Customer and project tags (conditional)
+  customer_tags = local.has_customer ? {
+    Customer = var.customer_name
+  } : {}
+  
+  project_tags = local.has_project ? {
+    Project = var.project_name
   } : {}
 
   # Merge all tags
   merged_tags = merge(
     local.base_tags,
     local.customer_tags,
+    local.project_tags,
     var.tags
   )
 }

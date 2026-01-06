@@ -53,6 +53,16 @@ output "availability_zones" {
   value       = aws_subnet.eks_private[*].availability_zone
 }
 
+output "private_route_table_ids" {
+  description = "IDs of private route tables for VPC Endpoints (Gateway)"
+  value       = aws_route_table.eks_private[*].id
+}
+
+output "public_route_table_id" {
+  description = "ID of public route table for VPC Endpoints (Gateway)"
+  value       = var.enable_nat_gateway ? aws_route_table.eks_public[0].id : null
+}
+
 # ------------------------------------------------------------------------------
 # Cluster Outputs
 # ------------------------------------------------------------------------------

@@ -43,14 +43,10 @@ module "eks" {
   namespaces = local.eks_namespaces
 
   # Node group configuration
-  node_groups = {
-    general = {
-      instance_types = var.eks_node_instance_types
-      desired_size   = var.eks_node_desired_size
-      min_size       = var.eks_node_min_size
-      max_size       = var.eks_node_max_size
-    }
-  }
+  system_node_group_instance_types = var.eks_node_instance_types
+  system_node_group_desired_size   = var.eks_node_desired_size
+  system_node_group_min_size       = var.eks_node_min_size
+  system_node_group_max_size       = var.eks_node_max_size
 
   tags = merge(
     local.common_tags,
@@ -240,12 +236,13 @@ module "redis_production" {
 
   workspace     = var.workspace
   environment   = "production"
+  aws_region    = var.aws_region
   customer_name = var.customer_name != null ? var.customer_name : ""
   project_name  = var.project_name != null ? var.project_name : ""
 
-  node_type         = var.redis_node_type
-  num_cache_nodes   = var.redis_num_cache_nodes
-  engine_version    = "7.1"
+  node_type           = var.redis_node_type
+  num_cache_clusters  = var.redis_num_cache_nodes
+  engine_version      = "7.1"
 
   # Resource sharing configuration
   resource_sharing         = local.production_redis_config.resource_sharing
@@ -273,12 +270,13 @@ module "redis_staging" {
 
   workspace     = var.workspace
   environment   = "staging"
+  aws_region    = var.aws_region
   customer_name = var.customer_name != null ? var.customer_name : ""
   project_name  = var.project_name != null ? var.project_name : ""
 
-  node_type         = "cache.r7g.large"  # Smaller instance for staging
-  num_cache_nodes   = 1
-  engine_version    = "7.1"
+  node_type           = "cache.r7g.large"  # Smaller instance for staging
+  num_cache_clusters  = 1
+  engine_version      = "7.1"
 
   # Dedicated staging Redis
   resource_sharing         = "dedicated"
@@ -305,12 +303,13 @@ module "redis_development" {
 
   workspace     = var.workspace
   environment   = "development"
+  aws_region    = var.aws_region
   customer_name = var.customer_name != null ? var.customer_name : ""
   project_name  = var.project_name != null ? var.project_name : ""
 
-  node_type         = "cache.r7g.large"  # Smaller instance for dev
-  num_cache_nodes   = 1
-  engine_version    = "7.1"
+  node_type           = "cache.r7g.large"  # Smaller instance for dev
+  num_cache_clusters  = 1
+  engine_version      = "7.1"
 
   # Dedicated development Redis
   resource_sharing         = "dedicated"
@@ -330,6 +329,345 @@ module "redis_development" {
   depends_on = [module.vpc]
 }
 
+# ------------------------------------------------------------------------------
+# VPC Endpoints (Optional - For Private Deployment)
+# ------------------------------------------------------------------------------
+
+# S3 Gateway Endpoint (FREE)
+module "vpc_endpoint_s3" {
+  source = "./network/vpc-endpoint"
+  count  = var.enable_vpc_endpoints ? 1 : 0
+
+  workspace     = var.workspace
+  region        = var.aws_region
+  environment   = "shared"
+  customer_name = var.customer_name
+  project_name  = var.project_name
+
+  service_name     = local.vpc_endpoints_config["s3"].service_name
+  endpoint_type    = local.vpc_endpoints_config["s3"].endpoint_type
+  vpc_id           = module.vpc.vpc_id
+  route_table_ids  = module.eks.private_route_table_ids
+
+  tags = merge(
+    local.common_tags,
+    {
+      Component = "VPC-Endpoints"
+      Service   = "S3"
+    }
+  )
+
+  depends_on = [module.vpc]
+}
+
+# ECR API Interface Endpoint
+module "vpc_endpoint_ecr_api" {
+  source = "./network/vpc-endpoint"
+  count  = var.enable_vpc_endpoints ? 1 : 0
+
+  workspace     = var.workspace
+  region        = var.aws_region
+  environment   = "shared"
+  customer_name = var.customer_name
+  project_name  = var.project_name
+
+  service_name        = local.vpc_endpoints_config["ecr_api"].service_name
+  endpoint_type       = local.vpc_endpoints_config["ecr_api"].endpoint_type
+  vpc_id              = module.vpc.vpc_id
+  subnet_ids          = module.eks.eks_private_subnet_ids
+  private_dns_enabled = true
+
+  tags = merge(
+    local.common_tags,
+    {
+      Component = "VPC-Endpoints"
+      Service   = "ECR-API"
+    }
+  )
+
+  depends_on = [module.vpc]
+}
+
+# ECR DKR Interface Endpoint
+module "vpc_endpoint_ecr_dkr" {
+  source = "./network/vpc-endpoint"
+  count  = var.enable_vpc_endpoints ? 1 : 0
+
+  workspace     = var.workspace
+  region        = var.aws_region
+  environment   = "shared"
+  customer_name = var.customer_name
+  project_name  = var.project_name
+
+  service_name        = local.vpc_endpoints_config["ecr_dkr"].service_name
+  endpoint_type       = local.vpc_endpoints_config["ecr_dkr"].endpoint_type
+  vpc_id              = module.vpc.vpc_id
+  subnet_ids          = module.eks.eks_private_subnet_ids
+  private_dns_enabled = true
+
+  tags = merge(
+    local.common_tags,
+    {
+      Component = "VPC-Endpoints"
+      Service   = "ECR-DKR"
+    }
+  )
+
+  depends_on = [module.vpc]
+}
+
+# EC2 Interface Endpoint
+module "vpc_endpoint_ec2" {
+  source = "./network/vpc-endpoint"
+  count  = var.enable_vpc_endpoints ? 1 : 0
+
+  workspace     = var.workspace
+  region        = var.aws_region
+  environment   = "shared"
+  customer_name = var.customer_name
+  project_name  = var.project_name
+
+  service_name        = local.vpc_endpoints_config["ec2"].service_name
+  endpoint_type       = local.vpc_endpoints_config["ec2"].endpoint_type
+  vpc_id              = module.vpc.vpc_id
+  subnet_ids          = module.eks.eks_private_subnet_ids
+  private_dns_enabled = true
+
+  tags = merge(
+    local.common_tags,
+    {
+      Component = "VPC-Endpoints"
+      Service   = "EC2"
+    }
+  )
+
+  depends_on = [module.vpc]
+}
+
+# EC2 Messages Interface Endpoint
+module "vpc_endpoint_ec2messages" {
+  source = "./network/vpc-endpoint"
+  count  = var.enable_vpc_endpoints ? 1 : 0
+
+  workspace     = var.workspace
+  region        = var.aws_region
+  environment   = "shared"
+  customer_name = var.customer_name
+  project_name  = var.project_name
+
+  service_name        = local.vpc_endpoints_config["ec2messages"].service_name
+  endpoint_type       = local.vpc_endpoints_config["ec2messages"].endpoint_type
+  vpc_id              = module.vpc.vpc_id
+  subnet_ids          = module.eks.eks_private_subnet_ids
+  private_dns_enabled = true
+
+  tags = merge(
+    local.common_tags,
+    {
+      Component = "VPC-Endpoints"
+      Service   = "EC2Messages"
+    }
+  )
+
+  depends_on = [module.vpc]
+}
+
+# STS Interface Endpoint
+module "vpc_endpoint_sts" {
+  source = "./network/vpc-endpoint"
+  count  = var.enable_vpc_endpoints ? 1 : 0
+
+  workspace     = var.workspace
+  region        = var.aws_region
+  environment   = "shared"
+  customer_name = var.customer_name
+  project_name  = var.project_name
+
+  service_name        = local.vpc_endpoints_config["sts"].service_name
+  endpoint_type       = local.vpc_endpoints_config["sts"].endpoint_type
+  vpc_id              = module.vpc.vpc_id
+  subnet_ids          = module.eks.eks_private_subnet_ids
+  private_dns_enabled = true
+
+  tags = merge(
+    local.common_tags,
+    {
+      Component = "VPC-Endpoints"
+      Service   = "STS"
+    }
+  )
+
+  depends_on = [module.vpc]
+}
+
+# Autoscaling Interface Endpoint
+module "vpc_endpoint_autoscaling" {
+  source = "./network/vpc-endpoint"
+  count  = var.enable_vpc_endpoints ? 1 : 0
+
+  workspace     = var.workspace
+  region        = var.aws_region
+  environment   = "shared"
+  customer_name = var.customer_name
+  project_name  = var.project_name
+
+  service_name        = local.vpc_endpoints_config["autoscaling"].service_name
+  endpoint_type       = local.vpc_endpoints_config["autoscaling"].endpoint_type
+  vpc_id              = module.vpc.vpc_id
+  subnet_ids          = module.eks.eks_private_subnet_ids
+  private_dns_enabled = true
+
+  tags = merge(
+    local.common_tags,
+    {
+      Component = "VPC-Endpoints"
+      Service   = "Autoscaling"
+    }
+  )
+
+  depends_on = [module.vpc]
+}
+
+# ELB Interface Endpoint
+module "vpc_endpoint_elasticloadbalancing" {
+  source = "./network/vpc-endpoint"
+  count  = var.enable_vpc_endpoints ? 1 : 0
+
+  workspace     = var.workspace
+  region        = var.aws_region
+  environment   = "shared"
+  customer_name = var.customer_name
+  project_name  = var.project_name
+
+  service_name        = local.vpc_endpoints_config["elasticloadbalancing"].service_name
+  endpoint_type       = local.vpc_endpoints_config["elasticloadbalancing"].endpoint_type
+  vpc_id              = module.vpc.vpc_id
+  subnet_ids          = module.eks.eks_private_subnet_ids
+  private_dns_enabled = true
+
+  tags = merge(
+    local.common_tags,
+    {
+      Component = "VPC-Endpoints"
+      Service   = "ELB"
+    }
+  )
+
+  depends_on = [module.vpc]
+}
+
+# CloudWatch Logs Interface Endpoint
+module "vpc_endpoint_logs" {
+  source = "./network/vpc-endpoint"
+  count  = var.enable_vpc_endpoints ? 1 : 0
+
+  workspace     = var.workspace
+  region        = var.aws_region
+  environment   = "shared"
+  customer_name = var.customer_name
+  project_name  = var.project_name
+
+  service_name        = local.vpc_endpoints_config["logs"].service_name
+  endpoint_type       = local.vpc_endpoints_config["logs"].endpoint_type
+  vpc_id              = module.vpc.vpc_id
+  subnet_ids          = module.eks.eks_private_subnet_ids
+  private_dns_enabled = true
+
+  tags = merge(
+    local.common_tags,
+    {
+      Component = "VPC-Endpoints"
+      Service   = "CloudWatch-Logs"
+    }
+  )
+
+  depends_on = [module.vpc]
+}
+
+# CloudWatch Monitoring Interface Endpoint
+module "vpc_endpoint_monitoring" {
+  source = "./network/vpc-endpoint"
+  count  = var.enable_vpc_endpoints ? 1 : 0
+
+  workspace     = var.workspace
+  region        = var.aws_region
+  environment   = "shared"
+  customer_name = var.customer_name
+  project_name  = var.project_name
+
+  service_name        = local.vpc_endpoints_config["monitoring"].service_name
+  endpoint_type       = local.vpc_endpoints_config["monitoring"].endpoint_type
+  vpc_id              = module.vpc.vpc_id
+  subnet_ids          = module.eks.eks_private_subnet_ids
+  private_dns_enabled = true
+
+  tags = merge(
+    local.common_tags,
+    {
+      Component = "VPC-Endpoints"
+      Service   = "CloudWatch-Monitoring"
+    }
+  )
+
+  depends_on = [module.vpc]
+}
+
+# SSM Interface Endpoint
+module "vpc_endpoint_ssm" {
+  source = "./network/vpc-endpoint"
+  count  = var.enable_vpc_endpoints ? 1 : 0
+
+  workspace     = var.workspace
+  region        = var.aws_region
+  environment   = "shared"
+  customer_name = var.customer_name
+  project_name  = var.project_name
+
+  service_name        = local.vpc_endpoints_config["ssm"].service_name
+  endpoint_type       = local.vpc_endpoints_config["ssm"].endpoint_type
+  vpc_id              = module.vpc.vpc_id
+  subnet_ids          = module.eks.eks_private_subnet_ids
+  private_dns_enabled = true
+
+  tags = merge(
+    local.common_tags,
+    {
+      Component = "VPC-Endpoints"
+      Service   = "SSM"
+    }
+  )
+
+  depends_on = [module.vpc]
+}
+
+# KMS Interface Endpoint
+module "vpc_endpoint_kms" {
+  source = "./network/vpc-endpoint"
+  count  = var.enable_vpc_endpoints ? 1 : 0
+
+  workspace     = var.workspace
+  region        = var.aws_region
+  environment   = "shared"
+  customer_name = var.customer_name
+  project_name  = var.project_name
+
+  service_name        = local.vpc_endpoints_config["kms"].service_name
+  endpoint_type       = local.vpc_endpoints_config["kms"].endpoint_type
+  vpc_id              = module.vpc.vpc_id
+  subnet_ids          = module.eks.eks_private_subnet_ids
+  private_dns_enabled = true
+
+  tags = merge(
+    local.common_tags,
+    {
+      Component = "VPC-Endpoints"
+      Service   = "KMS"
+    }
+  )
+
+  depends_on = [module.vpc]
+}
+
 # ==============================================================================
 # Deployment Architecture Summary:
 # ==============================================================================
@@ -338,9 +676,18 @@ module "redis_development" {
 # - ALB: 3 instances (prod.insighthealth.io, stag.insighthealth.io, dev.insighthealth.io)
 # - RDS: 1 production instance (shared by staging/dev)
 # - Redis: 1 production instance (shared by staging/dev)
+# - VPC Endpoints: 12 endpoints (disabled by default, enable_vpc_endpoints = false)
 #
 # Cost Optimization:
 # - Sharing RDS/Redis saves ~$600/month
 # - Single EKS cluster saves ~$144/month (2 extra control planes)
-# - Total estimated cost: ~$1,000/month
+# - VPC Endpoints disabled: $0/month (enable for +$715/month when using VPN)
+# - Total estimated cost: ~$1,000/month (public endpoint mode)
+#
+# Private Deployment (Future):
+# - Set enable_vpc_endpoints = true
+# - Set enable_vpn = true
+# - Set eks_endpoint_public_access = false
+# - Total cost with VPN + endpoints: ~$1,788/month
 # ==============================================================================
+

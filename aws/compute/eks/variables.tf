@@ -38,12 +38,12 @@ variable "plan_tier" {
 # ------------------------------------------------------------------------------
 
 variable "environment" {
-  description = "Environment name (e.g., production, staging, development)"
+  description = "Environment name (e.g., production, staging, development, shared)"
   type        = string
 
   validation {
-    condition     = contains(["production", "staging", "development"], var.environment)
-    error_message = "Environment must be one of: production, staging, or development."
+    condition     = contains(["production", "staging", "development", "shared"], var.environment)
+    error_message = "Environment must be one of: production, staging, development, or shared."
   }
 }
 

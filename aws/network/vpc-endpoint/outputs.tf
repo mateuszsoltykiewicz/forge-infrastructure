@@ -157,7 +157,9 @@ output "summary" {
     private_dns_enabled = var.endpoint_type == "Interface" ? var.private_dns_enabled : null
     subnet_count        = var.endpoint_type != "Gateway" ? length(var.subnet_ids) : 0
     route_table_count   = var.endpoint_type == "Gateway" ? length(var.route_table_ids) : 0
-    architecture_type   = var.architecture_type
+    workspace           = var.workspace
+    customer            = var.customer_name
+    project             = var.project_name
     environment         = var.environment
   }
 }

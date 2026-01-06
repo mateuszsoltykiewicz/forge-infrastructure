@@ -116,6 +116,64 @@ locals {
   ) : "forge-vpc"
 
   # ------------------------------------------------------------------------------
+  # VPC Endpoints Configuration (for future private deployment)
+  # ------------------------------------------------------------------------------
+
+  # VPC Endpoints for private AWS service access
+  # NOTE: Currently disabled (enable_vpc_endpoints = false by default)
+  # When enabled, these provide private connectivity to AWS services without internet
+  vpc_endpoints_config = var.enable_vpc_endpoints ? {
+    s3 = {
+      service_name  = "com.amazonaws.${var.aws_region}.s3"
+      endpoint_type = "Gateway"
+    }
+    ecr_api = {
+      service_name  = "com.amazonaws.${var.aws_region}.ecr.api"
+      endpoint_type = "Interface"
+    }
+    ecr_dkr = {
+      service_name  = "com.amazonaws.${var.aws_region}.ecr.dkr"
+      endpoint_type = "Interface"
+    }
+    ec2 = {
+      service_name  = "com.amazonaws.${var.aws_region}.ec2"
+      endpoint_type = "Interface"
+    }
+    ec2messages = {
+      service_name  = "com.amazonaws.${var.aws_region}.ec2messages"
+      endpoint_type = "Interface"
+    }
+    sts = {
+      service_name  = "com.amazonaws.${var.aws_region}.sts"
+      endpoint_type = "Interface"
+    }
+    autoscaling = {
+      service_name  = "com.amazonaws.${var.aws_region}.autoscaling"
+      endpoint_type = "Interface"
+    }
+    elasticloadbalancing = {
+      service_name  = "com.amazonaws.${var.aws_region}.elasticloadbalancing"
+      endpoint_type = "Interface"
+    }
+    logs = {
+      service_name  = "com.amazonaws.${var.aws_region}.logs"
+      endpoint_type = "Interface"
+    }
+    monitoring = {
+      service_name  = "com.amazonaws.${var.aws_region}.monitoring"
+      endpoint_type = "Interface"
+    }
+    ssm = {
+      service_name  = "com.amazonaws.${var.aws_region}.ssm"
+      endpoint_type = "Interface"
+    }
+    kms = {
+      service_name  = "com.amazonaws.${var.aws_region}.kms"
+      endpoint_type = "Interface"
+    }
+  } : {}
+
+  # ------------------------------------------------------------------------------
   # Common Tags
   # ------------------------------------------------------------------------------
 

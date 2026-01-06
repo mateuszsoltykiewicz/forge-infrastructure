@@ -48,10 +48,10 @@ resource "aws_kms_alias" "eks" {
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.0"
+  version = "~> 21.0"  # Updated to support AWS provider >= 6.0
 
-  cluster_name    = local.cluster_name
-  cluster_version = var.kubernetes_version
+  name               = local.cluster_name
+  kubernetes_version = var.kubernetes_version
 
   # VPC Configuration (auto-discovered)
   vpc_id                   = data.aws_vpc.main.id
@@ -59,18 +59,18 @@ module "eks" {
   control_plane_subnet_ids = aws_subnet.eks_private[*].id
 
   # Cluster Endpoint Access
-  cluster_endpoint_public_access       = var.cluster_endpoint_public_access
-  cluster_endpoint_private_access      = var.cluster_endpoint_private_access
-  cluster_endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
+  endpoint_public_access       = var.cluster_endpoint_public_access
+  endpoint_private_access      = var.cluster_endpoint_private_access
+  endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
 
   # Encryption Configuration
-  cluster_encryption_config = {
+  encryption_config = {
     resources        = ["secrets"]
     provider_key_arn = aws_kms_key.eks.arn
   }
 
   # CloudWatch Logging
-  cluster_enabled_log_types              = var.cluster_enabled_log_types
+  enabled_log_types                      = var.cluster_enabled_log_types
   cloudwatch_log_group_retention_in_days = var.cloudwatch_log_group_retention_in_days
   cloudwatch_log_group_kms_key_id        = aws_kms_key.eks.arn
 
@@ -102,7 +102,7 @@ module "eks" {
   )
 
   # Cluster Security Group
-  cluster_security_group_additional_rules = {
+  security_group_additional_rules = {
     ingress_nodes_ephemeral = {
       description                = "Nodes to cluster API (ephemeral ports)"
       protocol                   = "tcp"
@@ -255,7 +255,7 @@ module "eks" {
   }
 
   # EKS Add-ons
-  cluster_addons = {
+  addons = {
     # CoreDNS
     coredns = {
       most_recent = true
