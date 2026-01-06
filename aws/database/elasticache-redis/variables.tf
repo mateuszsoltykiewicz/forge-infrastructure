@@ -21,6 +21,12 @@ variable "customer_name" {
   default     = ""
 }
 
+variable "project_name" {
+  description = "Project name within customer context (e.g., web-platform, mobile-app). Enables multiple Redis clusters per customer."
+  type        = string
+  default     = ""
+}
+
 variable "architecture_type" {
   description = "Architecture deployment type: shared, dedicated_local, or dedicated_regional"
   type        = string
@@ -55,6 +61,16 @@ variable "environment" {
 variable "aws_region" {
   description = "AWS region where the ElastiCache cluster will be deployed"
   type        = string
+}
+
+variable "workspace" {
+  description = "Workspace identifier for VPC discovery (e.g., production, staging)"
+  type        = string
+
+  validation {
+    condition     = length(var.workspace) > 0
+    error_message = "Workspace must not be empty."
+  }
 }
 
 variable "replication_group_id_override" {
@@ -109,28 +125,49 @@ variable "port" {
 }
 
 # ------------------------------------------------------------------------------
-# Network Configuration
+# Network Configuration (Auto-Discovery)
 # ------------------------------------------------------------------------------
 
-variable "vpc_id" {
-  description = "VPC ID where the ElastiCache cluster will be deployed"
-  type        = string
-}
+# VPC and subnets are auto-discovered by tags
+# No manual vpc_id or subnet_ids required!
 
-variable "subnet_ids" {
-  description = "Subnet IDs for the cache subnet group (must span at least 2 AZs)"
-  type        = list(string)
+variable "redis_subnet_az_count" {
+  description = "Number of availability zones for Redis subnets (2-3)"
+  type        = number
+  default     = 3
 
   validation {
-    condition     = length(var.subnet_ids) >= 2
-    error_message = "Cache subnet group must span at least 2 availability zones."
+    condition     = var.redis_subnet_az_count >= 2 && var.redis_subnet_az_count <= 3
+    error_message = "Redis subnets must span 2 or 3 availability zones."
   }
 }
 
-variable "security_group_ids" {
-  description = "Security group IDs to attach to the ElastiCache cluster"
-  type        = list(string)
-  default     = []
+variable "redis_subnet_newbits" {
+  description = "Number of additional bits to add to VPC CIDR for Redis subnets (e.g., 8 for /24 from /16 VPC)"
+  type        = number
+  default     = 8
+
+  validation {
+    condition     = var.redis_subnet_newbits >= 1 && var.redis_subnet_newbits <= 12
+    error_message = "Subnet newbits must be between 1 and 12."
+  }
+}
+
+variable "redis_subnet_netnum_start" {
+  description = "Starting network number for Redis subnet CIDR calculation"
+  type        = number
+  default     = 100
+
+  validation {
+    condition     = var.redis_subnet_netnum_start >= 0
+    error_message = "Subnet netnum_start must be non-negative."
+  }
+}
+
+variable "eks_cluster_name" {
+  description = "EKS cluster name for security group integration (optional, auto-discovered if empty)"
+  type        = string
+  default     = ""
 }
 
 variable "preferred_cache_cluster_azs" {
@@ -182,10 +219,21 @@ variable "auth_token_enabled" {
   default     = true
 }
 
-variable "kms_key_id" {
-  description = "KMS key ID for encryption (if empty, uses default AWS managed key)"
-  type        = string
-  default     = ""
+variable "enable_kms_key_rotation" {
+  description = "Enable automatic KMS key rotation"
+  type        = bool
+  default     = true
+}
+
+variable "kms_deletion_window_in_days" {
+  description = "KMS key deletion window in days (7-30)"
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.kms_deletion_window_in_days >= 7 && var.kms_deletion_window_in_days <= 30
+    error_message = "KMS deletion window must be between 7 and 30 days."
+  }
 }
 
 # ------------------------------------------------------------------------------

@@ -6,16 +6,21 @@
 
 locals {
   # ------------------------------------------------------------------------------
-  # Replication Group Naming
+  # Replication Group Naming (Multi-Tenant)
   # ------------------------------------------------------------------------------
 
-  # Generate replication group ID based on customer context
-  # Shared: forge-{environment}-redis
-  # Dedicated: {customer_name}-{region}-redis
+  # Determine cluster ownership model
+  is_customer_cluster = var.customer_id != ""
+  is_project_cluster  = var.project_name != ""
+
+  # Multi-tenant cluster naming conventions:
+  # 1. Shared (platform): forge-{environment}-redis
+  # 2. Customer-dedicated: {customer_name}-{region}-redis
+  # 3. Customer + Project: {customer_name}-{project_name}-{region}-redis
   replication_group_id = var.replication_group_id_override != "" ? var.replication_group_id_override : (
-    var.architecture_type == "shared"
-    ? "forge-${var.environment}-redis"
-    : "${var.customer_name}-${var.aws_region}-redis"
+    local.is_customer_cluster && local.is_project_cluster ? "${var.customer_name}-${var.project_name}-${var.aws_region}-redis" :
+    local.is_customer_cluster ? "${var.customer_name}-${var.aws_region}-redis" :
+    "forge-${var.environment}-redis"
   )
 
   # ------------------------------------------------------------------------------
@@ -25,19 +30,29 @@ locals {
   base_tags = {
     Environment      = var.environment
     ManagedBy        = "Terraform"
-    TerraformModule  = "forge/modules/cache/elasticache-redis"
+    TerraformModule  = "forge/aws/database/elasticache-redis"
     Region           = var.aws_region
+    Workspace        = var.workspace
     ReplicationGroup = local.replication_group_id
     Engine           = "redis"
     EngineVersion    = var.engine_version
   }
 
   # ------------------------------------------------------------------------------
-  # Customer-Aware Tags
+  # Multi-Tenant Tags
   # ------------------------------------------------------------------------------
 
-  # Add customer tags for dedicated architectures
-  customer_tags = var.architecture_type != "shared" && var.customer_id != "" ? {
+  # Multi-tenant tags (Customer + Project)
+  customer_tags = local.is_customer_cluster ? {
+    Customer = var.customer_name
+  } : {}
+
+  project_tags = local.is_project_cluster ? {
+    Project = var.project_name
+  } : {}
+
+  # Legacy tags for backward compatibility
+  legacy_tags = local.is_customer_cluster ? {
     CustomerId       = var.customer_id
     CustomerName     = var.customer_name
     ArchitectureType = var.architecture_type
@@ -45,12 +60,14 @@ locals {
   } : {}
 
   # ------------------------------------------------------------------------------
-  # Merged Tags
+  # Merged Tags (Multi-Tenant)
   # ------------------------------------------------------------------------------
 
   merged_tags = merge(
     local.base_tags,
     local.customer_tags,
+    local.project_tags,
+    local.legacy_tags,
     var.tags
   )
 

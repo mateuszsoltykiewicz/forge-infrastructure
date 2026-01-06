@@ -5,137 +5,198 @@
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
+# Network Outputs
+# ------------------------------------------------------------------------------
+
+output "vpc_id" {
+  description = "VPC ID (auto-discovered)"
+  value       = data.aws_vpc.main.id
+}
+
+output "vpc_cidr" {
+  description = "VPC CIDR block (auto-discovered)"
+  value       = data.aws_vpc.main.cidr_block
+}
+
+output "eks_private_subnet_ids" {
+  description = "EKS private subnet IDs created by this module"
+  value       = aws_subnet.eks_private[*].id
+}
+
+output "eks_private_subnet_cidrs" {
+  description = "EKS private subnet CIDR blocks"
+  value       = aws_subnet.eks_private[*].cidr_block
+}
+
+output "eks_public_subnet_ids" {
+  description = "EKS public subnet IDs (for NAT Gateway)"
+  value       = var.enable_nat_gateway ? aws_subnet.eks_public[*].id : []
+}
+
+output "eks_public_subnet_cidrs" {
+  description = "EKS public subnet CIDR blocks"
+  value       = var.enable_nat_gateway ? aws_subnet.eks_public[*].cidr_block : []
+}
+
+output "nat_gateway_ids" {
+  description = "NAT Gateway IDs (if enabled)"
+  value       = var.enable_nat_gateway ? aws_nat_gateway.eks[*].id : []
+}
+
+output "nat_gateway_eips" {
+  description = "NAT Gateway Elastic IP addresses"
+  value       = var.enable_nat_gateway ? aws_eip.eks_nat[*].public_ip : []
+}
+
+output "availability_zones" {
+  description = "Availability zones used for EKS subnets"
+  value       = aws_subnet.eks_private[*].availability_zone
+}
+
+# ------------------------------------------------------------------------------
 # Cluster Outputs
 # ------------------------------------------------------------------------------
 
 output "cluster_id" {
   description = "The ID/name of the EKS cluster"
-  value       = aws_eks_cluster.main.id
+  value       = module.eks.cluster_id
 }
 
 output "cluster_arn" {
   description = "The ARN of the EKS cluster"
-  value       = aws_eks_cluster.main.arn
+  value       = module.eks.cluster_arn
+}
+
+output "project_name" {
+  description = "Project name (if applicable)"
+  value       = var.project_name != "" ? var.project_name : null
+}
+
+output "customer_name" {
+  description = "Customer name (if applicable)"
+  value       = var.customer_name != "" ? var.customer_name : null
 }
 
 output "cluster_name" {
   description = "The name of the EKS cluster"
-  value       = aws_eks_cluster.main.name
+  value       = module.eks.cluster_name
 }
 
 output "cluster_endpoint" {
   description = "Endpoint for the EKS cluster API server"
-  value       = aws_eks_cluster.main.endpoint
+  value       = module.eks.cluster_endpoint
 }
 
 output "cluster_version" {
   description = "The Kubernetes server version of the cluster"
-  value       = aws_eks_cluster.main.version
+  value       = module.eks.cluster_version
 }
 
 output "cluster_platform_version" {
   description = "The platform version of the EKS cluster"
-  value       = aws_eks_cluster.main.platform_version
+  value       = module.eks.cluster_platform_version
 }
 
 output "cluster_certificate_authority_data" {
   description = "Base64 encoded certificate data required to communicate with the cluster"
-  value       = aws_eks_cluster.main.certificate_authority[0].data
+  value       = module.eks.cluster_certificate_authority_data
   sensitive   = true
+}
+
+output "cluster_security_group_id" {
+  description = "Security group ID attached to the EKS cluster"
+  value       = module.eks.cluster_security_group_id
 }
 
 # ------------------------------------------------------------------------------
 # OIDC Provider Outputs (for IRSA)
 # ------------------------------------------------------------------------------
 
-output "cluster_oidc_issuer_url" {
-  description = "The URL on the EKS cluster OIDC issuer"
-  value       = try(aws_eks_cluster.main.identity[0].oidc[0].issuer, "")
-}
-
 output "oidc_provider_arn" {
-  description = "ARN of the OIDC provider for IRSA"
-  value       = try(aws_iam_openid_connect_provider.cluster[0].arn, "")
+  description = "ARN of the OIDC Provider for IRSA"
+  value       = module.eks.oidc_provider_arn
 }
 
-output "oidc_provider_url" {
-  description = "OIDC provider URL without https:// prefix (for IRSA trust policies)"
-  value       = local.oidc_provider_url
+output "oidc_provider" {
+  description = "OIDC provider URL (without https://)"
+  value       = module.eks.oidc_provider
 }
 
-# ------------------------------------------------------------------------------
-# Security Group Outputs
-# ------------------------------------------------------------------------------
-
-output "cluster_security_group_id" {
-  description = "Security group ID attached to the EKS cluster"
-  value       = aws_eks_cluster.main.vpc_config[0].cluster_security_group_id
-}
-
-# ------------------------------------------------------------------------------
-# IAM Role Outputs
-# ------------------------------------------------------------------------------
-
-output "cluster_iam_role_arn" {
-  description = "IAM role ARN of the EKS cluster"
-  value       = aws_iam_role.cluster.arn
-}
-
-output "cluster_iam_role_name" {
-  description = "IAM role name of the EKS cluster"
-  value       = aws_iam_role.cluster.name
-}
-
-output "node_group_iam_role_arn" {
-  description = "IAM role ARN of the EKS node groups"
-  value       = aws_iam_role.node_group.arn
-}
-
-output "node_group_iam_role_name" {
-  description = "IAM role name of the EKS node groups"
-  value       = aws_iam_role.node_group.name
-}
-
-output "ebs_csi_driver_iam_role_arn" {
-  description = "IAM role ARN for the EBS CSI driver (IRSA)"
-  value       = try(aws_iam_role.ebs_csi_driver[0].arn, "")
+output "cluster_oidc_issuer_url" {
+  description = "The URL on the EKS cluster OIDC Issuer"
+  value       = try(module.eks.cluster_oidc_issuer_url, "")
 }
 
 # ------------------------------------------------------------------------------
 # Node Group Outputs
 # ------------------------------------------------------------------------------
 
-output "node_groups" {
-  description = "Map of node group names to their attributes"
-  value = {
-    for k, ng in aws_eks_node_group.main : k => {
-      id                = ng.id
-      arn               = ng.arn
-      status            = ng.status
-      capacity_type     = ng.capacity_type
-      instance_types    = ng.instance_types
-      scaling_config    = ng.scaling_config
-      node_group_name   = ng.node_group_name
-    }
-  }
+output "node_security_group_id" {
+  description = "Security group ID attached to the EKS nodes"
+  value       = module.eks.node_security_group_id
 }
 
-output "customer_node_groups" {
-  description = "Map of customer node group names to their attributes (Basic plan customers only)"
-  value = {
-    for k, ng in aws_eks_node_group.customer : k => {
-      id                = ng.id
-      arn               = ng.arn
-      status            = ng.status
-      capacity_type     = ng.capacity_type
-      instance_types    = ng.instance_types
-      scaling_config    = ng.scaling_config
-      node_group_name   = ng.node_group_name
-      customer_id       = ng.tags["CustomerId"]
-      customer_name     = ng.tags["CustomerName"]
-      plan_tier         = ng.tags["PlanTier"]
-    }
-  }
+output "eks_managed_node_groups" {
+  description = "Map of attribute maps for all EKS managed node groups"
+  value       = module.eks.eks_managed_node_groups
+}
+
+output "eks_managed_node_groups_autoscaling_group_names" {
+  description = "List of the autoscaling group names for EKS managed node groups"
+  value       = module.eks.eks_managed_node_groups_autoscaling_group_names
+}
+
+# ------------------------------------------------------------------------------
+# KMS Outputs
+# ------------------------------------------------------------------------------
+
+output "kms_key_id" {
+  description = "The ID of the KMS key used for EKS encryption"
+  value       = aws_kms_key.eks.key_id
+}
+
+output "kms_key_arn" {
+  description = "The ARN of the KMS key used for EKS encryption"
+  value       = aws_kms_key.eks.arn
+}
+
+output "kms_key_alias" {
+  description = "The alias of the KMS key used for EKS encryption"
+  value       = aws_kms_alias.eks.name
+}
+
+# ------------------------------------------------------------------------------
+# IAM Role Outputs (IRSA)
+# ------------------------------------------------------------------------------
+
+output "vpc_cni_irsa_role_arn" {
+  description = "ARN of the VPC CNI IRSA role"
+  value       = aws_iam_role.vpc_cni_irsa.arn
+}
+
+output "vpc_cni_irsa_role_name" {
+  description = "Name of the VPC CNI IRSA role"
+  value       = aws_iam_role.vpc_cni_irsa.name
+}
+
+output "ebs_csi_irsa_role_arn" {
+  description = "ARN of the EBS CSI IRSA role"
+  value       = aws_iam_role.ebs_csi_irsa.arn
+}
+
+output "ebs_csi_irsa_role_name" {
+  description = "Name of the EBS CSI IRSA role"
+  value       = aws_iam_role.ebs_csi_irsa.name
+}
+
+output "cluster_autoscaler_irsa_role_arn" {
+  description = "ARN of the Cluster Autoscaler IRSA role (if enabled)"
+  value       = var.enable_cluster_autoscaler_iam ? aws_iam_role.cluster_autoscaler_irsa[0].arn : null
+}
+
+output "cluster_autoscaler_irsa_role_name" {
+  description = "Name of the Cluster Autoscaler IRSA role (if enabled)"
+  value       = var.enable_cluster_autoscaler_iam ? aws_iam_role.cluster_autoscaler_irsa[0].name : null
 }
 
 # ------------------------------------------------------------------------------
@@ -143,20 +204,55 @@ output "customer_node_groups" {
 # ------------------------------------------------------------------------------
 
 output "cloudwatch_log_group_name" {
-  description = "Name of the CloudWatch log group for EKS cluster logs"
-  value       = aws_cloudwatch_log_group.cluster.name
+  description = "Name of the CloudWatch log group for cluster logs"
+  value       = module.eks.cloudwatch_log_group_name
 }
 
 output "cloudwatch_log_group_arn" {
-  description = "ARN of the CloudWatch log group for EKS cluster logs"
-  value       = aws_cloudwatch_log_group.cluster.arn
+  description = "ARN of the CloudWatch log group for cluster logs"
+  value       = module.eks.cloudwatch_log_group_arn
 }
 
 # ------------------------------------------------------------------------------
-# Connection Information
+# Cluster Add-ons Outputs
 # ------------------------------------------------------------------------------
 
-output "kubeconfig_command" {
-  description = "Command to update kubeconfig for kubectl access"
-  value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${aws_eks_cluster.main.name}"
+output "cluster_addons" {
+  description = "Map of attribute maps for all EKS cluster addons"
+  value       = module.eks.cluster_addons
+}
+
+# ------------------------------------------------------------------------------
+# Access Entries Outputs
+# ------------------------------------------------------------------------------
+
+output "access_entries" {
+  description = "Map of access entries for cluster access management"
+  value       = module.eks.access_entries
+}
+
+# ------------------------------------------------------------------------------
+# Useful Commands Output
+# ------------------------------------------------------------------------------
+
+output "kubectl_config_command" {
+  description = "Command to update kubeconfig for this cluster"
+  value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
+}
+
+output "cluster_autoscaler_helm_values" {
+  description = "Helm values for installing Cluster Autoscaler (if IAM role created)"
+  value = var.enable_cluster_autoscaler_iam ? {
+    autoDiscovery = {
+      clusterName = module.eks.cluster_name
+    }
+    awsRegion = var.aws_region
+    rbac = {
+      serviceAccount = {
+        annotations = {
+          "eks.amazonaws.com/role-arn" = aws_iam_role.cluster_autoscaler_irsa[0].arn
+        }
+      }
+    }
+  } : null
 }

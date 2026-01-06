@@ -1,8 +1,8 @@
 # ==============================================================================
 # EKS Module - Input Variables
 # ==============================================================================
-# This module creates an Amazon EKS cluster with managed node groups.
-# It supports customer-aware naming and tagging for multi-tenant environments.
+# This module creates an Amazon EKS cluster using the official
+# terraform-aws-modules/eks/aws module.
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -17,6 +17,12 @@ variable "customer_id" {
 
 variable "customer_name" {
   description = "Customer name for resource naming (empty for shared infrastructure)"
+  type        = string
+  default     = ""
+}
+
+variable "project_name" {
+  description = "Project name within customer context (e.g., web-platform, mobile-app). Enables multiple EKS clusters per customer."
   type        = string
   default     = ""
 }
@@ -75,250 +81,285 @@ variable "kubernetes_version" {
 }
 
 # ------------------------------------------------------------------------------
-# Network Configuration
+# Network Configuration (Auto-Discovery)
 # ------------------------------------------------------------------------------
 
-variable "vpc_id" {
-  description = "VPC ID where the EKS cluster will be deployed"
+variable "workspace" {
+  description = "Workspace identifier for VPC discovery (e.g., production, staging)"
   type        = string
-}
-
-variable "control_plane_subnet_ids" {
-  description = "Subnet IDs for the EKS control plane (must span at least 2 AZs)"
-  type        = list(string)
 
   validation {
-    condition     = length(var.control_plane_subnet_ids) >= 2
-    error_message = "Control plane must span at least 2 availability zones."
+    condition     = length(var.workspace) > 0
+    error_message = "Workspace must not be empty."
   }
 }
 
-variable "node_group_subnet_ids" {
-  description = "Subnet IDs for EKS worker nodes (private subnets recommended)"
-  type        = list(string)
+# ------------------------------------------------------------------------------
+# EKS Subnets Configuration
+# ------------------------------------------------------------------------------
+
+variable "eks_subnet_az_count" {
+  description = "Number of availability zones for EKS subnets (2-3)"
+  type        = number
+  default     = 3
 
   validation {
-    condition     = length(var.node_group_subnet_ids) >= 2
-    error_message = "Node groups must span at least 2 availability zones."
+    condition     = var.eks_subnet_az_count >= 2 && var.eks_subnet_az_count <= 3
+    error_message = "EKS subnets must span 2 or 3 availability zones."
   }
+}
+
+variable "eks_subnet_newbits" {
+  description = "Number of additional bits to add to VPC CIDR for EKS subnets (e.g., 3 for /19 from /16 VPC)"
+  type        = number
+  default     = 3
+
+  validation {
+    condition     = var.eks_subnet_newbits >= 1 && var.eks_subnet_newbits <= 8
+    error_message = "Subnet newbits must be between 1 and 8."
+  }
+}
+
+variable "eks_subnet_netnum_start" {
+  description = "Starting network number for EKS subnet CIDR calculation"
+  type        = number
+  default     = 4
+
+  validation {
+    condition     = var.eks_subnet_netnum_start >= 0
+    error_message = "Subnet netnum_start must be non-negative."
+  }
+}
+
+variable "kubernetes_cluster_tag_value" {
+  description = "Value for kubernetes.io/cluster tag (owned or shared)"
+  type        = string
+  default     = "owned"
+
+  validation {
+    condition     = contains(["owned", "shared"], var.kubernetes_cluster_tag_value)
+    error_message = "Cluster tag value must be 'owned' or 'shared'."
+  }
+}
+
+variable "enable_ipv6" {
+  description = "Enable IPv6 for EKS subnets"
+  type        = bool
+  default     = false
+}
+
+variable "enable_nat_gateway" {
+  description = "Enable NAT Gateway for temporary public access (can be disabled after setup)"
+  type        = bool
+  default     = false
 }
 
 # ------------------------------------------------------------------------------
 # Cluster Endpoint Configuration
 # ------------------------------------------------------------------------------
 
-variable "endpoint_private_access" {
-  description = "Enable private API server endpoint"
-  type        = bool
-  default     = true
-}
-
-variable "endpoint_public_access" {
+variable "cluster_endpoint_public_access" {
   description = "Enable public API server endpoint"
   type        = bool
   default     = true
 }
 
-variable "endpoint_public_access_cidrs" {
+variable "cluster_endpoint_private_access" {
+  description = "Enable private API server endpoint"
+  type        = bool
+  default     = true
+}
+
+variable "cluster_endpoint_public_access_cidrs" {
   description = "CIDR blocks allowed to access the public API endpoint"
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
 
 # ------------------------------------------------------------------------------
-# Cluster Logging Configuration
+# KMS Configuration
 # ------------------------------------------------------------------------------
 
-variable "enabled_cluster_log_types" {
+variable "kms_deletion_window_in_days" {
+  description = "Number of days before KMS key deletion (7-30)"
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.kms_deletion_window_in_days >= 7 && var.kms_deletion_window_in_days <= 30
+    error_message = "KMS deletion window must be between 7 and 30 days."
+  }
+}
+
+variable "enable_kms_key_rotation" {
+  description = "Enable automatic KMS key rotation"
+  type        = bool
+  default     = true
+}
+
+# ------------------------------------------------------------------------------
+# CloudWatch Logging Configuration
+# ------------------------------------------------------------------------------
+
+variable "cluster_enabled_log_types" {
   description = "List of control plane logging types to enable"
   type        = list(string)
   default     = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
-}
-
-variable "cluster_log_retention_days" {
-  description = "Number of days to retain cluster logs in CloudWatch"
-  type        = number
-  default     = 7
 
   validation {
-    condition     = contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653], var.cluster_log_retention_days)
+    condition = alltrue([
+      for log_type in var.cluster_enabled_log_types :
+      contains(["api", "audit", "authenticator", "controllerManager", "scheduler"], log_type)
+    ])
+    error_message = "Valid log types are: api, audit, authenticator, controllerManager, scheduler."
+  }
+}
+
+variable "cloudwatch_log_group_retention_in_days" {
+  description = "Number of days to retain cluster logs in CloudWatch"
+  type        = number
+  default     = 90
+
+  validation {
+    condition     = contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653], var.cloudwatch_log_group_retention_in_days)
     error_message = "Log retention must be a valid CloudWatch Logs retention period."
   }
 }
 
 # ------------------------------------------------------------------------------
-# EKS Add-ons Configuration
+# System Node Group Configuration
 # ------------------------------------------------------------------------------
 
-variable "enable_ebs_csi_driver" {
-  description = "Enable AWS EBS CSI driver add-on for persistent volumes"
-  type        = bool
-  default     = true
-}
-
-variable "enable_vpc_cni" {
-  description = "Enable VPC CNI add-on for pod networking"
-  type        = bool
-  default     = true
-}
-
-variable "enable_kube_proxy" {
-  description = "Enable kube-proxy add-on"
-  type        = bool
-  default     = true
-}
-
-variable "enable_coredns" {
-  description = "Enable CoreDNS add-on for DNS resolution"
-  type        = bool
-  default     = true
-}
-
-# ------------------------------------------------------------------------------
-# Managed Node Groups Configuration
-# ------------------------------------------------------------------------------
-
-variable "node_groups" {
-  description = "Map of EKS managed node groups to create"
-  type = map(object({
-    desired_size   = number
-    min_size       = number
-    max_size       = number
-    instance_types = list(string)
-    capacity_type  = string # ON_DEMAND or SPOT
-    disk_size      = number
-    labels         = optional(map(string), {})
-    taints = optional(list(object({
-      key    = string
-      value  = string
-      effect = string
-    })), [])
-  }))
-  default = {
-    system = {
-      desired_size   = 2
-      min_size       = 2
-      max_size       = 4
-      instance_types = ["t3.medium"]
-      capacity_type  = "ON_DEMAND"
-      disk_size      = 50
-      labels = {
-        role = "system"
-      }
-      taints = []
-    }
-    application = {
-      desired_size   = 3
-      min_size       = 2
-      max_size       = 10
-      instance_types = ["t3.large"]
-      capacity_type  = "ON_DEMAND"
-      disk_size      = 100
-      labels = {
-        role = "application"
-      }
-      taints = []
-    }
-  }
-
-  validation {
-    condition     = alltrue([for k, v in var.node_groups : contains(["ON_DEMAND", "SPOT"], v.capacity_type)])
-    error_message = "Node group capacity_type must be either ON_DEMAND or SPOT."
-  }
-
-  validation {
-    condition     = alltrue([for k, v in var.node_groups : v.min_size <= v.desired_size && v.desired_size <= v.max_size])
-    error_message = "Node group sizes must satisfy: min_size <= desired_size <= max_size."
-  }
-}
-
-# ------------------------------------------------------------------------------
-# Customer-Specific Node Groups (for Shared Architecture)
-# ------------------------------------------------------------------------------
-
-variable "customer_node_groups" {
-  description = <<-EOT
-    Map of customer-specific node groups for shared architecture (Basic plan customers).
-    Each customer gets a dedicated node group with taints to prevent cross-customer scheduling.
-    Trial plan customers do NOT get dedicated node groups - they share the 'system' node group.
-    
-    Key = customer name (lowercase, hyphenated)
-    Value = node group configuration
-    
-    Example:
-      customer_node_groups = {
-        "globex-corp" = {
-          customer_id    = "cust_001"
-          customer_name  = "globex-corp"
-          plan_tier      = "basic"
-          desired_size   = 1
-          min_size       = 1
-          max_size       = 3
-          instance_types = ["t3.medium", "t3.large"]
-          capacity_type  = "SPOT"
-          disk_size      = 50
-        }
-      }
-  EOT
-  type = map(object({
-    customer_id    = string
-    customer_name  = string
-    plan_tier      = string
-    desired_size   = number
-    min_size       = number
-    max_size       = number
-    instance_types = list(string)
-    capacity_type  = string # ON_DEMAND or SPOT
-    disk_size      = number
-  }))
-  default = {}
-
-  validation {
-    condition     = alltrue([for k, v in var.customer_node_groups : contains(["ON_DEMAND", "SPOT"], v.capacity_type)])
-    error_message = "Customer node group capacity_type must be either ON_DEMAND or SPOT."
-  }
-
-  validation {
-    condition     = alltrue([for k, v in var.customer_node_groups : v.min_size <= v.desired_size && v.desired_size <= v.max_size])
-    error_message = "Customer node group sizes must satisfy: min_size <= desired_size <= max_size."
-  }
-
-  validation {
-    condition     = alltrue([for k, v in var.customer_node_groups : contains(["basic", "trial"], v.plan_tier)])
-    error_message = "Customer node groups are only for 'basic' plan. Trial customers share the system node group."
-  }
-}
-
-# ------------------------------------------------------------------------------
-# Security Configuration
-# ------------------------------------------------------------------------------
-
-variable "security_group_ids" {
-  description = "Additional security group IDs to attach to the cluster"
+variable "system_node_group_instance_types" {
+  description = "Instance types for system node group (Graviton3 recommended)"
   type        = list(string)
-  default     = []
+  default     = ["m7g.large", "m7g.xlarge"]
 }
 
-variable "node_security_group_ids" {
-  description = "Additional security group IDs to attach to worker nodes"
-  type        = list(string)
-  default     = []
+variable "system_node_group_capacity_type" {
+  description = "Capacity type for system node group (ON_DEMAND or SPOT)"
+  type        = string
+  default     = "ON_DEMAND"
+
+  validation {
+    condition     = contains(["ON_DEMAND", "SPOT"], var.system_node_group_capacity_type)
+    error_message = "Capacity type must be either ON_DEMAND or SPOT."
+  }
+}
+
+variable "system_node_group_min_size" {
+  description = "Minimum number of nodes in system node group"
+  type        = number
+  default     = 2
+
+  validation {
+    condition     = var.system_node_group_min_size >= 2
+    error_message = "Minimum size must be at least 2 for high availability."
+  }
+}
+
+variable "system_node_group_max_size" {
+  description = "Maximum number of nodes in system node group"
+  type        = number
+  default     = 10
+
+  validation {
+    condition     = var.system_node_group_max_size >= var.system_node_group_min_size
+    error_message = "Maximum size must be greater than or equal to minimum size."
+  }
+}
+
+variable "system_node_group_desired_size" {
+  description = "Desired number of nodes in system node group"
+  type        = number
+  default     = 3
+
+  validation {
+    condition     = var.system_node_group_desired_size >= var.system_node_group_min_size && var.system_node_group_desired_size <= var.system_node_group_max_size
+    error_message = "Desired size must be between min and max size."
+  }
+}
+
+variable "system_node_group_disk_size" {
+  description = "Disk size in GB for system node group"
+  type        = number
+  default     = 100
+
+  validation {
+    condition     = var.system_node_group_disk_size >= 20
+    error_message = "Disk size must be at least 20 GB."
+  }
+}
+
+variable "system_node_group_disk_type" {
+  description = "Disk type for system node group (gp2, gp3, io1, io2)"
+  type        = string
+  default     = "gp3"
+
+  validation {
+    condition     = contains(["gp2", "gp3", "io1", "io2"], var.system_node_group_disk_type)
+    error_message = "Disk type must be one of: gp2, gp3, io1, io2."
+  }
+}
+
+variable "system_node_group_disk_iops" {
+  description = "IOPS for system node group disk (only for gp3, io1, io2)"
+  type        = number
+  default     = 3000
+}
+
+variable "system_node_group_disk_throughput" {
+  description = "Throughput in MB/s for system node group disk (only for gp3)"
+  type        = number
+  default     = 150
+}
+
+variable "enable_system_node_taints" {
+  description = "Enable taints on system nodes (CriticalAddonsOnly)"
+  type        = bool
+  default     = true
+}
+
+# ------------------------------------------------------------------------------
+# Bootstrap Configuration
+# ------------------------------------------------------------------------------
+
+variable "enable_bootstrap_user_data" {
+  description = "Enable custom bootstrap user data for nodes"
+  type        = bool
+  default     = false
+}
+
+variable "pre_bootstrap_user_data" {
+  description = "Custom user data to run before node bootstrap"
+  type        = string
+  default     = ""
 }
 
 # ------------------------------------------------------------------------------
 # IAM Configuration
 # ------------------------------------------------------------------------------
 
-variable "enable_irsa" {
-  description = "Enable IAM Roles for Service Accounts (IRSA)"
+variable "enable_cluster_autoscaler_iam" {
+  description = "Create IAM role for Cluster Autoscaler"
   type        = bool
   default     = true
 }
 
-variable "cluster_creator_admin_permissions" {
-  description = "Enable cluster creator admin permissions"
+variable "enable_ebs_csi_kms_policy" {
+  description = "Attach additional KMS policy to EBS CSI driver role for encrypted volumes"
   type        = bool
   default     = true
+}
+
+# ------------------------------------------------------------------------------
+# Access Management
+# ------------------------------------------------------------------------------
+
+variable "additional_access_entries" {
+  description = "Additional IAM principals to grant cluster access (merged with terraform caller)"
+  type        = any
+  default     = {}
 }
 
 # ------------------------------------------------------------------------------

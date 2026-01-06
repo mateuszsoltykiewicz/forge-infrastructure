@@ -23,7 +23,7 @@ resource "random_password" "auth_token" {
 
 resource "aws_elasticache_subnet_group" "main" {
   name       = "${local.replication_group_id}-subnet-group"
-  subnet_ids = var.subnet_ids
+  subnet_ids = aws_subnet.redis_private[*].id
 
   tags = merge(
     local.merged_tags,
@@ -31,6 +31,8 @@ resource "aws_elasticache_subnet_group" "main" {
       Name = "${local.replication_group_id}-subnet-group"
     }
   )
+
+  depends_on = [aws_subnet.redis_private]
 }
 
 # ------------------------------------------------------------------------------
@@ -88,14 +90,14 @@ resource "aws_elasticache_replication_group" "main" {
 
   # Network Configuration
   subnet_group_name           = aws_elasticache_subnet_group.main.name
-  security_group_ids          = var.security_group_ids
+  security_group_ids          = [aws_security_group.redis.id]
   preferred_cache_cluster_azs = length(var.preferred_cache_cluster_azs) > 0 ? var.preferred_cache_cluster_azs : null
 
   # Security Configuration
   at_rest_encryption_enabled = var.at_rest_encryption_enabled
   transit_encryption_enabled = var.transit_encryption_enabled
   auth_token                 = local.auth_token
-  kms_key_id                 = var.kms_key_id != "" ? var.kms_key_id : null
+  kms_key_id                 = aws_kms_key.redis.arn
 
   # Backup Configuration
   snapshot_retention_limit  = var.snapshot_retention_limit
@@ -109,14 +111,18 @@ resource "aws_elasticache_replication_group" "main" {
   auto_minor_version_upgrade = var.auto_minor_version_upgrade
 
   # Log Delivery Configuration
-  dynamic "log_delivery_configuration" {
-    for_each = var.log_delivery_configuration
-    content {
-      destination      = log_delivery_configuration.value.destination
-      destination_type = log_delivery_configuration.value.destination_type
-      log_format       = log_delivery_configuration.value.log_format
-      log_type         = log_delivery_configuration.value.log_type
-    }
+  log_delivery_configuration {
+    destination      = aws_cloudwatch_log_group.redis_slow_log.name
+    destination_type = "cloudwatch-logs"
+    log_format       = "json"
+    log_type         = "slow-log"
+  }
+
+  log_delivery_configuration {
+    destination      = aws_cloudwatch_log_group.redis_engine_log.name
+    destination_type = "cloudwatch-logs"
+    log_format       = "json"
+    log_type         = "engine-log"
   }
 
   tags = merge(
@@ -132,6 +138,13 @@ resource "aws_elasticache_replication_group" "main" {
       auth_token,
     ]
   }
+
+  depends_on = [
+    aws_kms_key.redis,
+    aws_security_group.redis,
+    aws_cloudwatch_log_group.redis_slow_log,
+    aws_cloudwatch_log_group.redis_engine_log
+  ]
 }
 
 # ------------------------------------------------------------------------------
@@ -140,7 +153,7 @@ resource "aws_elasticache_replication_group" "main" {
 
 # Redis primary endpoint
 resource "aws_ssm_parameter" "redis_primary_endpoint" {
-  name        = "/${var.environment}/cache/${local.replication_group_id}/primary-endpoint"
+  name        = "/${var.environment}/${local.replication_group_id}/primary-endpoint"
   description = "Redis primary endpoint for ${local.replication_group_id}"
   type        = "String"
   value       = aws_elasticache_replication_group.main.primary_endpoint_address
@@ -157,7 +170,7 @@ resource "aws_ssm_parameter" "redis_primary_endpoint" {
 resource "aws_ssm_parameter" "redis_reader_endpoint" {
   count = var.multi_az_enabled ? 1 : 0
 
-  name        = "/${var.environment}/cache/${local.replication_group_id}/reader-endpoint"
+  name        = "/${var.environment}/${local.replication_group_id}/reader-endpoint"
   description = "Redis reader endpoint for ${local.replication_group_id}"
   type        = "String"
   value       = aws_elasticache_replication_group.main.reader_endpoint_address
@@ -172,7 +185,7 @@ resource "aws_ssm_parameter" "redis_reader_endpoint" {
 
 # Redis port
 resource "aws_ssm_parameter" "redis_port" {
-  name        = "/${var.environment}/cache/${local.replication_group_id}/port"
+  name        = "/${var.environment}/${local.replication_group_id}/port"
   description = "Redis port for ${local.replication_group_id}"
   type        = "String"
   value       = tostring(var.port)
@@ -189,11 +202,11 @@ resource "aws_ssm_parameter" "redis_port" {
 resource "aws_ssm_parameter" "redis_auth_token" {
   count = var.auth_token_enabled ? 1 : 0
 
-  name        = "/${var.environment}/cache/${local.replication_group_id}/auth-token"
+  name        = "/${var.environment}/${local.replication_group_id}/auth-token"
   description = "Redis AUTH token for ${local.replication_group_id}"
   type        = "SecureString"
   value       = local.auth_token
-  key_id      = var.kms_key_id != "" ? var.kms_key_id : null
+  key_id      = aws_kms_key.redis.arn
 
   tags = merge(
     local.merged_tags,

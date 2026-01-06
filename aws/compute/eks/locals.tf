@@ -6,16 +6,21 @@
 
 locals {
   # ------------------------------------------------------------------------------
-  # Cluster Naming
+  # Cluster Naming (Multi-Tenant)
   # ------------------------------------------------------------------------------
 
-  # Generate cluster name based on customer context
-  # Shared: forge-{environment}-eks
-  # Dedicated: {customer_name}-{region}-eks
+  # Determine cluster ownership model
+  is_customer_cluster = var.customer_id != ""
+  is_project_cluster  = var.project_name != ""
+
+  # Multi-tenant cluster naming conventions:
+  # 1. Shared (platform): forge-{environment}-eks
+  # 2. Customer-dedicated: {customer_name}-{region}-eks
+  # 3. Customer + Project: {customer_name}-{project_name}-{region}-eks
   cluster_name = var.cluster_name_override != "" ? var.cluster_name_override : (
-    var.architecture_type == "shared"
-    ? "forge-${var.environment}-eks"
-    : "${var.customer_name}-${var.aws_region}-eks"
+    local.is_customer_cluster && local.is_project_cluster ? "${var.customer_name}-${var.project_name}-${var.aws_region}-eks" :
+    local.is_customer_cluster ? "${var.customer_name}-${var.aws_region}-eks" :
+    "forge-${var.environment}-eks"
   )
 
   # ------------------------------------------------------------------------------
@@ -23,20 +28,29 @@ locals {
   # ------------------------------------------------------------------------------
 
   base_tags = {
-    Environment      = var.environment
-    ManagedBy        = "Terraform"
-    TerraformModule  = "forge/modules/compute/eks"
-    Region           = var.aws_region
-    ClusterName      = local.cluster_name
+    Environment       = var.environment
+    ManagedBy         = "Terraform"
+    TerraformModule   = "forge/aws/compute/eks"
+    Region            = var.aws_region
+    ClusterName       = local.cluster_name
     KubernetesVersion = var.kubernetes_version
   }
 
   # ------------------------------------------------------------------------------
-  # Customer-Aware Tags
+  # Multi-Tenant Tags
   # ------------------------------------------------------------------------------
 
-  # Add customer tags for dedicated architectures
-  customer_tags = var.architecture_type != "shared" && var.customer_id != "" ? {
+  # Multi-tenant tags (Customer + Project)
+  customer_tags = local.is_customer_cluster ? {
+    Customer = var.customer_name
+  } : {}
+
+  project_tags = local.is_project_cluster ? {
+    Project = var.project_name
+  } : {}
+
+  # Legacy tags for backward compatibility
+  legacy_tags = local.is_customer_cluster ? {
     CustomerId       = var.customer_id
     CustomerName     = var.customer_name
     ArchitectureType = var.architecture_type
@@ -44,33 +58,14 @@ locals {
   } : {}
 
   # ------------------------------------------------------------------------------
-  # Merged Tags
+  # Merged Tags (Multi-Tenant)
   # ------------------------------------------------------------------------------
 
   merged_tags = merge(
     local.base_tags,
     local.customer_tags,
+    local.project_tags,
+    local.legacy_tags,
     var.tags
   )
-
-  # ------------------------------------------------------------------------------
-  # OIDC Provider Configuration
-  # ------------------------------------------------------------------------------
-
-  # Extract OIDC provider URL without https:// prefix
-  oidc_provider_url = replace(aws_eks_cluster.main.identity[0].oidc[0].issuer, "https://", "")
-
-  # OIDC provider ARN for IRSA
-  oidc_provider_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${local.oidc_provider_url}"
-
-  # ------------------------------------------------------------------------------
-  # Node Group Configuration
-  # ------------------------------------------------------------------------------
-
-  # Common launch template user data for all node groups
-  node_userdata = base64encode(templatefile("${path.module}/templates/node-userdata.sh.tpl", {
-    cluster_name     = local.cluster_name
-    cluster_endpoint = aws_eks_cluster.main.endpoint
-    cluster_ca       = aws_eks_cluster.main.certificate_authority[0].data
-  }))
 }
