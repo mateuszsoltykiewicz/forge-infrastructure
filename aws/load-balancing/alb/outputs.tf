@@ -4,6 +4,25 @@
 #
 
 # ========================================
+# Multi-Tenant Identification
+# ========================================
+
+output "alb_identifier" {
+  description = "ALB identifier (multi-tenant aware)"
+  value       = local.alb_name
+}
+
+output "customer_name" {
+  description = "Customer name (if applicable)"
+  value       = var.customer_name != "" ? var.customer_name : null
+}
+
+output "project_name" {
+  description = "Project name (if applicable)"
+  value       = var.project_name != "" ? var.project_name : null
+}
+
+# ========================================
 # ALB Identification
 # ========================================
 
@@ -51,18 +70,38 @@ output "alb_type" {
 }
 
 output "vpc_id" {
-  description = "VPC ID where the ALB is deployed"
-  value       = aws_lb.this.vpc_id
+  description = "VPC ID where the ALB is deployed (auto-discovered)"
+  value       = data.aws_vpc.main.id
+}
+
+output "vpc_cidr" {
+  description = "VPC CIDR block (auto-discovered)"
+  value       = data.aws_vpc.main.cidr_block
 }
 
 output "subnet_ids" {
-  description = "List of subnet IDs attached to the ALB"
-  value       = aws_lb.this.subnets
+  description = "List of subnet IDs attached to the ALB (auto-created)"
+  value       = aws_subnet.alb_public[*].id
+}
+
+output "subnet_cidrs" {
+  description = "List of subnet CIDR blocks"
+  value       = aws_subnet.alb_public[*].cidr_block
+}
+
+output "availability_zones" {
+  description = "Availability zones used for ALB subnets"
+  value       = aws_subnet.alb_public[*].availability_zone
 }
 
 output "security_group_ids" {
-  description = "List of security group IDs attached to the ALB"
-  value       = aws_lb.this.security_groups
+  description = "List of security group IDs attached to the ALB (auto-created)"
+  value       = [aws_security_group.alb.id]
+}
+
+output "eks_cluster_name" {
+  description = "EKS cluster name (if integrated)"
+  value       = local.eks_cluster_name
 }
 
 output "ip_address_type" {
@@ -169,6 +208,27 @@ output "access_logs_prefix" {
 }
 
 # ========================================
+# CloudWatch Outputs
+# ========================================
+
+output "cloudwatch_dashboard_name" {
+  description = "CloudWatch dashboard name"
+  value       = aws_cloudwatch_dashboard.alb.dashboard_name
+}
+
+output "cloudwatch_alarms" {
+  description = "CloudWatch alarm names"
+  value = {
+    high_target_5xx    = aws_cloudwatch_metric_alarm.high_target_5xx.alarm_name
+    high_alb_5xx       = aws_cloudwatch_metric_alarm.high_alb_5xx.alarm_name
+    high_response_time = aws_cloudwatch_metric_alarm.high_response_time.alarm_name
+    unhealthy_targets  = aws_cloudwatch_metric_alarm.unhealthy_targets.alarm_name
+    no_healthy_targets = aws_cloudwatch_metric_alarm.no_healthy_targets.alarm_name
+    high_tls_errors    = aws_cloudwatch_metric_alarm.high_tls_errors.alarm_name
+  }
+}
+
+# ========================================
 # Route 53 Integration
 # ========================================
 
@@ -199,11 +259,11 @@ output "summary" {
     zone_id  = aws_lb.this.zone_id
 
     # Configuration
-    alb_type          = aws_lb.this.load_balancer_type
-    is_internal       = aws_lb.this.internal
-    ip_address_type   = aws_lb.this.ip_address_type
-    vpc_id            = aws_lb.this.vpc_id
-    subnet_count      = length(aws_lb.this.subnets)
+    alb_type             = aws_lb.this.load_balancer_type
+    is_internal          = aws_lb.this.internal
+    ip_address_type      = aws_lb.this.ip_address_type
+    vpc_id               = aws_lb.this.vpc_id
+    subnet_count         = length(aws_lb.this.subnets)
     security_group_count = length(aws_lb.this.security_groups)
 
     # Target groups
@@ -211,15 +271,15 @@ output "summary" {
     target_group_keys  = keys(aws_lb_target_group.this)
 
     # Listeners
-    http_listener_enabled  = local.http_listener_enabled
-    https_listener_enabled = local.https_listener_enabled
+    http_listener_enabled   = local.http_listener_enabled
+    https_listener_enabled  = local.https_listener_enabled
     http_redirects_to_https = local.http_listener_enabled && var.http_listener.redirect_https
 
     # Features
-    has_waf              = var.web_acl_arn != null
-    access_logs_enabled  = var.enable_access_logs
-    deletion_protection  = var.enable_deletion_protection
-    http2_enabled        = var.enable_http2
+    has_waf             = var.web_acl_arn != null
+    access_logs_enabled = var.enable_access_logs
+    deletion_protection = var.enable_deletion_protection
+    http2_enabled       = var.enable_http2
 
     # Route 53 integration
     route53_alias = {

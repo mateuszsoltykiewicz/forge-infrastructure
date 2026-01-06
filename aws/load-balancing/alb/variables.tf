@@ -4,51 +4,41 @@
 #
 
 # ========================================
-# Customer Context
+# Multi-Tenant Context
 # ========================================
 
-variable "customer_id" {
-  description = "UUID of the customer (00000000-0000-0000-0000-000000000000 for Forge platform)"
+variable "workspace" {
+  description = "Workspace name for VPC discovery (e.g., forge-platform)"
   type        = string
+  default     = "forge-platform"
+}
 
-  validation {
-    condition     = can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.customer_id))
-    error_message = "customer_id must be a valid UUID"
-  }
+variable "customer_id" {
+  description = "UUID of the customer (empty for shared infrastructure)"
+  type        = string
+  default     = ""
 }
 
 variable "customer_name" {
-  description = "Name of the customer (forge for platform resources)"
+  description = "Customer name for resource naming (empty for shared infrastructure)"
   type        = string
-
-  validation {
-    condition     = length(var.customer_name) > 0 && length(var.customer_name) <= 63
-    error_message = "customer_name must be between 1 and 63 characters"
-  }
+  default     = ""
 }
 
-variable "architecture_type" {
-  description = "Architecture type: shared, dedicated_single_tenant, or dedicated_vpc"
+variable "project_name" {
+  description = "Project name for project-level isolation (empty for customer-level or shared)"
   type        = string
-
-  validation {
-    condition     = contains(["shared", "dedicated_single_tenant", "dedicated_vpc"], var.architecture_type)
-    error_message = "architecture_type must be shared, dedicated_single_tenant, or dedicated_vpc"
-  }
+  default     = ""
 }
 
 variable "plan_tier" {
-  description = "Customer plan tier: basic, pro, enterprise, or platform"
+  description = "Customer plan tier (e.g., basic, pro, enterprise, platform)"
   type        = string
-
-  validation {
-    condition     = contains(["basic", "pro", "enterprise", "platform"], var.plan_tier)
-    error_message = "plan_tier must be basic, pro, enterprise, or platform"
-  }
+  default     = ""
 }
 
 # ========================================
-# Environment & Region
+# Environment
 # ========================================
 
 variable "environment" {
@@ -58,16 +48,6 @@ variable "environment" {
   validation {
     condition     = length(var.environment) > 0
     error_message = "environment must not be empty"
-  }
-}
-
-variable "region" {
-  description = "AWS region for the ALB"
-  type        = string
-
-  validation {
-    condition     = can(regex("^[a-z]{2}-[a-z]+-[0-9]$", var.region))
-    error_message = "region must be a valid AWS region (e.g., us-east-1)"
   }
 }
 
@@ -110,43 +90,36 @@ variable "ip_address_type" {
 }
 
 # ========================================
-# Network Configuration
+# Network Configuration (Auto-Discovery)
 # ========================================
 
-variable "vpc_id" {
-  description = "VPC ID for the ALB and target groups"
+variable "alb_subnet_az_count" {
+  description = "Number of AZs for ALB subnets (minimum 2 for HA)"
+  type        = number
+  default     = 2
+
+  validation {
+    condition     = var.alb_subnet_az_count >= 2 && var.alb_subnet_az_count <= 3
+    error_message = "ALB subnet AZ count must be between 2 and 3."
+  }
+}
+
+variable "alb_subnet_newbits" {
+  description = "Number of bits to add to VPC CIDR for ALB subnets (e.g., 8 for /24 subnets from /16 VPC)"
+  type        = number
+  default     = 8
+}
+
+variable "alb_subnet_netnum_start" {
+  description = "Starting number for ALB subnet CIDR calculation"
+  type        = number
+  default     = 10
+}
+
+variable "eks_cluster_name" {
+  description = "EKS cluster name for security group integration (empty = auto-discover)"
   type        = string
-
-  validation {
-    condition     = can(regex("^vpc-[a-z0-9]+$", var.vpc_id))
-    error_message = "vpc_id must be a valid VPC ID (vpc-xxxxx)"
-  }
-}
-
-variable "subnet_ids" {
-  description = "List of subnet IDs for the ALB (minimum 2 subnets in different AZs)"
-  type        = list(string)
-
-  validation {
-    condition     = length(var.subnet_ids) >= 2
-    error_message = "subnet_ids must contain at least 2 subnets in different availability zones"
-  }
-
-  validation {
-    condition     = alltrue([for s in var.subnet_ids : can(regex("^subnet-[a-z0-9]+$", s))])
-    error_message = "All subnet_ids must be valid subnet IDs (subnet-xxxxx)"
-  }
-}
-
-variable "security_group_ids" {
-  description = "List of security group IDs to attach to the ALB"
-  type        = list(string)
-  default     = []
-
-  validation {
-    condition     = alltrue([for sg in var.security_group_ids : can(regex("^sg-[a-z0-9]+$", sg))])
-    error_message = "All security_group_ids must be valid security group IDs (sg-xxxxx)"
-  }
+  default     = ""
 }
 
 # ========================================
@@ -263,7 +236,7 @@ variable "target_groups" {
     deregistration_delay          = optional(number, 300)
     slow_start                    = optional(number, 0)
     load_balancing_algorithm_type = optional(string, "round_robin")
-    
+
     health_check = optional(object({
       enabled             = optional(bool, true)
       interval            = optional(number, 30)
@@ -293,10 +266,10 @@ variable "target_groups" {
 variable "http_listener" {
   description = "HTTP listener configuration"
   type = object({
-    enabled       = optional(bool, true)
-    port          = optional(number, 80)
-    redirect_https = optional(bool, true)
-    default_action = optional(string, "redirect")  # redirect or forward
+    enabled          = optional(bool, true)
+    port             = optional(number, 80)
+    redirect_https   = optional(bool, true)
+    default_action   = optional(string, "redirect") # redirect or forward
     target_group_key = optional(string, null)
   })
   default = {
@@ -310,12 +283,12 @@ variable "http_listener" {
 variable "https_listener" {
   description = "HTTPS listener configuration"
   type = object({
-    enabled              = optional(bool, false)
-    port                 = optional(number, 443)
-    certificate_arn      = optional(string, null)
-    ssl_policy           = optional(string, "ELBSecurityPolicy-TLS13-1-2-2021-06")
-    alpn_policy          = optional(string, null)
-    target_group_key     = optional(string, null)
+    enabled          = optional(bool, false)
+    port             = optional(number, 443)
+    certificate_arn  = optional(string, null)
+    ssl_policy       = optional(string, "ELBSecurityPolicy-TLS13-1-2-2021-06")
+    alpn_policy      = optional(string, null)
+    target_group_key = optional(string, null)
   })
   default = {
     enabled = false

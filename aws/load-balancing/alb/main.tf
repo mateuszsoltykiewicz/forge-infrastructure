@@ -14,21 +14,21 @@ resource "aws_lb" "this" {
   ip_address_type    = var.ip_address_type
 
   # Network configuration
-  subnets         = var.subnet_ids
-  security_groups = var.security_group_ids
+  subnets         = aws_subnet.alb_public[*].id
+  security_groups = [aws_security_group.alb.id]
 
   # ALB attributes
   enable_deletion_protection       = var.enable_deletion_protection
   enable_cross_zone_load_balancing = var.enable_cross_zone_load_balancing
   enable_http2                     = var.enable_http2
   enable_waf_fail_open             = var.enable_waf_fail_open
-  
-  idle_timeout                     = var.idle_timeout
-  desync_mitigation_mode           = var.desync_mitigation_mode
-  drop_invalid_header_fields       = var.drop_invalid_header_fields
-  preserve_host_header             = var.preserve_host_header
-  enable_xff_client_port           = var.enable_xff_client_port
-  xff_header_processing_mode       = var.xff_header_processing_mode
+
+  idle_timeout               = var.idle_timeout
+  desync_mitigation_mode     = var.desync_mitigation_mode
+  drop_invalid_header_fields = var.drop_invalid_header_fields
+  preserve_host_header       = var.preserve_host_header
+  enable_xff_client_port     = var.enable_xff_client_port
+  xff_header_processing_mode = var.xff_header_processing_mode
 
   # Access logs
   dynamic "access_logs" {
@@ -42,6 +42,12 @@ resource "aws_lb" "this" {
   }
 
   tags = local.all_tags
+
+  depends_on = [
+    aws_subnet.alb_public,
+    aws_security_group.alb,
+    aws_route_table_association.alb_public
+  ]
 
   # Lifecycle validations
   lifecycle {
@@ -83,7 +89,7 @@ resource "aws_lb_target_group" "this" {
   name        = "${local.tg_name_prefix}-${each.key}"
   port        = each.value.port
   protocol    = each.value.protocol
-  vpc_id      = var.vpc_id
+  vpc_id      = data.aws_vpc.main.id
   target_type = each.value.target_type
 
   # Deregistration and slow start
@@ -119,11 +125,11 @@ resource "aws_lb_target_group" "this" {
   tags = merge(
     local.target_group_base_tags,
     {
-      Name            = "${local.tg_name_prefix}-${each.key}"
-      TargetGroupKey  = each.key
-      Port            = each.value.port
-      Protocol        = each.value.protocol
-      TargetType      = each.value.target_type
+      Name           = "${local.tg_name_prefix}-${each.key}"
+      TargetGroupKey = each.key
+      Port           = each.value.port
+      Protocol       = each.value.protocol
+      TargetType     = each.value.target_type
     }
   )
 
@@ -198,7 +204,7 @@ resource "aws_lb_listener" "https" {
 
   # Default action: forward to target group
   default_action {
-    type             = "forward"
+    type = "forward"
     target_group_arn = var.https_listener.target_group_key != null ? (
       aws_lb_target_group.this[var.https_listener.target_group_key].arn
     ) : null

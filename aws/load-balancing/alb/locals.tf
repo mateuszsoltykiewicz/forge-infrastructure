@@ -5,24 +5,39 @@
 
 locals {
   # ========================================
-  # Architecture Detection
+  # Multi-Tenant Naming Convention
   # ========================================
 
-  is_shared_architecture = var.architecture_type == "shared"
+  # Determine cluster type based on customer_name and project_name
+  is_customer_cluster = var.customer_name != ""
+  is_project_cluster  = var.customer_name != "" && var.project_name != ""
 
-  # ========================================
-  # ALB Naming
-  # ========================================
-
-  # ALB name (max 32 characters)
-  alb_name = var.name != null ? var.name : (
-    local.is_shared_architecture
-    ? substr("forge-${var.environment}-alb", 0, 32)
-    : substr("${var.customer_name}-${var.region}-alb", 0, 32)
+  # Generate ALB name based on multi-tenant context (max 32 characters):
+  # - Shared: forge-{environment}-alb
+  # - Customer: forge-{environment}-{customer_name}-alb
+  # - Project: forge-{environment}-{customer_name}-{project_name}-alb
+  alb_name = var.name != null ? var.name : substr(
+    local.is_project_cluster
+    ? "forge-${var.environment}-${var.customer_name}-${var.project_name}-alb"
+    : (local.is_customer_cluster
+      ? "forge-${var.environment}-${var.customer_name}-alb"
+      : "forge-${var.environment}-alb"
+    ),
+    0,
+    32
   )
 
   # Target group name prefix (max 32 characters, leave room for hash)
-  tg_name_prefix = local.is_shared_architecture ? "forge-${var.environment}" : "${var.customer_name}-${var.region}"
+  tg_name_prefix = substr(
+    local.is_project_cluster
+    ? "forge-${var.environment}-${var.customer_name}-${var.project_name}"
+    : (local.is_customer_cluster
+      ? "forge-${var.environment}-${var.customer_name}"
+      : "forge-${var.environment}"
+    ),
+    0,
+    32
+  )
 
   # ========================================
   # Listener Configuration
@@ -57,7 +72,7 @@ locals {
 
   # Validate target group protocols
   valid_protocols = ["HTTP", "HTTPS", "TCP", "TLS", "UDP", "TCP_UDP", "GENEVE"]
-  
+
   target_groups_protocol_valid = alltrue([
     for tg_key, tg in var.target_groups :
     contains(local.valid_protocols, tg.protocol)
@@ -65,7 +80,7 @@ locals {
 
   # Validate target types
   valid_target_types = ["instance", "ip", "lambda", "alb"]
-  
+
   target_groups_type_valid = alltrue([
     for tg_key, tg in var.target_groups :
     contains(local.valid_target_types, tg.target_type)
@@ -76,7 +91,7 @@ locals {
   # ========================================
 
   alb_type_description = var.internal ? "Internal" : "Internet-facing"
-  
+
   auto_comment = "${local.alb_type_description} Application Load Balancer for ${var.environment}"
 
   # ========================================
@@ -88,22 +103,29 @@ locals {
     Module      = "alb"
     ManagedBy   = "terraform"
     Environment = var.environment
-    Region      = var.region
+    Workspace   = var.workspace
   }
 
-  # Customer-specific tags
-  customer_tags = {
-    CustomerId       = var.customer_id
-    CustomerName     = var.customer_name
-    ArchitectureType = var.architecture_type
-    PlanTier         = var.plan_tier
-  }
+  # Multi-tenant tags
+  customer_tags = local.is_customer_cluster ? {
+    Customer = var.customer_name
+  } : {}
+
+  project_tags = local.is_project_cluster ? {
+    Project = var.project_name
+  } : {}
+
+  # Legacy tags for backward compatibility
+  legacy_tags = var.customer_id != "" ? {
+    CustomerId = var.customer_id
+    PlanTier   = var.plan_tier
+  } : {}
 
   # ALB-specific tags
   alb_tags = {
-    Name        = local.alb_name
-    Type        = var.load_balancer_type
-    Visibility  = var.internal ? "internal" : "internet-facing"
+    Name          = local.alb_name
+    Type          = var.load_balancer_type
+    Visibility    = var.internal ? "internal" : "internet-facing"
     IPAddressType = var.ip_address_type
   }
 
@@ -111,6 +133,8 @@ locals {
   all_tags = merge(
     local.base_tags,
     local.customer_tags,
+    local.project_tags,
+    local.legacy_tags,
     local.alb_tags,
     var.tags
   )
@@ -119,6 +143,8 @@ locals {
   target_group_base_tags = merge(
     local.base_tags,
     local.customer_tags,
+    local.project_tags,
+    local.legacy_tags,
     var.tags
   )
 }
