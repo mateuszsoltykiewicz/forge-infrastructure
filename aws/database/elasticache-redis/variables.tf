@@ -276,6 +276,11 @@ variable "maintenance_window" {
   description = "Weekly maintenance window (UTC, e.g., sun:05:00-sun:07:00)"
   type        = string
   default     = "sun:05:00-sun:07:00"
+
+  validation {
+    condition     = can(regex("^(mon|tue|wed|thu|fri|sat|sun):[0-2][0-9]:[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):[0-2][0-9]:[0-5][0-9]$", var.maintenance_window))
+    error_message = "Maintenance window must be in format ddd:HH:MM-ddd:HH:MM (e.g., sun:05:00-sun:07:00)."
+  }
 }
 
 variable "auto_minor_version_upgrade" {

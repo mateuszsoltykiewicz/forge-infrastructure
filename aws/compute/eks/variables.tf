@@ -301,12 +301,22 @@ variable "system_node_group_disk_iops" {
   description = "IOPS for system node group disk (only for gp3, io1, io2)"
   type        = number
   default     = 3000
+
+  validation {
+    condition     = var.system_node_group_disk_iops >= 3000 && var.system_node_group_disk_iops <= 16000
+    error_message = "Disk IOPS must be between 3000 and 16000 for gp3/io1/io2 volumes."
+  }
 }
 
 variable "system_node_group_disk_throughput" {
   description = "Throughput in MB/s for system node group disk (only for gp3)"
   type        = number
   default     = 150
+
+  validation {
+    condition     = var.system_node_group_disk_throughput >= 125 && var.system_node_group_disk_throughput <= 1000
+    error_message = "Disk throughput must be between 125 and 1000 MB/s for gp3 volumes."
+  }
 }
 
 variable "enable_system_node_taints" {

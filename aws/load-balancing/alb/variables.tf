@@ -119,12 +119,22 @@ variable "alb_subnet_newbits" {
   description = "Number of bits to add to VPC CIDR for ALB subnets (e.g., 8 for /24 subnets from /16 VPC)"
   type        = number
   default     = 8
+
+  validation {
+    condition     = var.alb_subnet_newbits >= 4 && var.alb_subnet_newbits <= 16
+    error_message = "ALB subnet newbits must be between 4 and 16 for reasonable subnet sizes."
+  }
 }
 
 variable "alb_subnet_netnum_start" {
   description = "Starting number for ALB subnet CIDR calculation"
   type        = number
   default     = 10
+
+  validation {
+    condition     = var.alb_subnet_netnum_start >= 0 && var.alb_subnet_netnum_start <= 250
+    error_message = "ALB subnet netnum_start must be between 0 and 250."
+  }
 }
 
 variable "eks_cluster_name" {

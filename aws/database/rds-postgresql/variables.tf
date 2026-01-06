@@ -124,6 +124,11 @@ variable "iops" {
   description = "Provisioned IOPS (required for io1/io2, optional for gp3)"
   type        = number
   default     = 0
+
+  validation {
+    condition     = var.iops == 0 || (var.iops >= 1000 && var.iops <= 256000)
+    error_message = "IOPS must be 0 (auto) or between 1000 and 256000."
+  }
 }
 
 variable "storage_throughput" {
@@ -200,12 +205,22 @@ variable "rds_subnet_newbits" {
   description = "Number of bits to add to VPC CIDR for RDS subnets (e.g., 8 for /24 subnets from /16 VPC)"
   type        = number
   default     = 8
+
+  validation {
+    condition     = var.rds_subnet_newbits >= 4 && var.rds_subnet_newbits <= 16
+    error_message = "RDS subnet newbits must be between 4 and 16 for reasonable subnet sizes."
+  }
 }
 
 variable "rds_subnet_netnum_start" {
   description = "Starting number for RDS subnet CIDR calculation"
   type        = number
-  default     = 50
+  default     = 20
+
+  validation {
+    condition     = var.rds_subnet_netnum_start >= 0 && var.rds_subnet_netnum_start <= 250
+    error_message = "RDS subnet netnum_start must be between 0 and 250."
+  }
 }
 
 variable "eks_cluster_name" {
@@ -266,6 +281,11 @@ variable "maintenance_window" {
   description = "Preferred maintenance window (UTC, e.g., sun:04:00-sun:05:00)"
   type        = string
   default     = "sun:04:00-sun:05:00"
+
+  validation {
+    condition     = can(regex("^(mon|tue|wed|thu|fri|sat|sun):[0-2][0-9]:[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):[0-2][0-9]:[0-5][0-9]$", var.maintenance_window))
+    error_message = "Maintenance window must be in format ddd:HH:MM-ddd:HH:MM (e.g., sun:04:00-sun:05:00)."
+  }
 }
 
 variable "skip_final_snapshot" {
