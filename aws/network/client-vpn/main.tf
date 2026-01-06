@@ -58,7 +58,7 @@ resource "aws_iam_role_policy" "vpn_cloudwatch_logs" {
           "logs:DescribeLogGroups",
           "logs:DescribeLogStreams"
         ]
-        Resource = var.enable_connection_logs ? "${aws_cloudwatch_log_group.vpn_connection_logs[0].arn}:*" : "*"
+        Resource = "${aws_cloudwatch_log_group.vpn_connection_logs[0].arn}:*"
       }
     ]
   })
