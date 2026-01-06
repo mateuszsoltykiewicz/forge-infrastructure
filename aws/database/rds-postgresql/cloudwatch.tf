@@ -11,7 +11,7 @@
 # PostgreSQL log group (for database logs)
 resource "aws_cloudwatch_log_group" "postgresql" {
   name              = "/aws/rds/instance/${local.db_identifier}/postgresql"
-  retention_in_days = 30
+  retention_in_days = var.cloudwatch_retention_days
   kms_key_id        = aws_kms_key.rds.arn
 
   tags = merge(
@@ -25,7 +25,7 @@ resource "aws_cloudwatch_log_group" "postgresql" {
 # Upgrade log group (for RDS version upgrades)
 resource "aws_cloudwatch_log_group" "upgrade" {
   name              = "/aws/rds/instance/${local.db_identifier}/upgrade"
-  retention_in_days = 30
+  retention_in_days = var.cloudwatch_retention_days
   kms_key_id        = aws_kms_key.rds.arn
 
   tags = merge(

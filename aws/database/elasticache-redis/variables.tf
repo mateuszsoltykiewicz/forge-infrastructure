@@ -276,7 +276,18 @@ variable "auto_minor_version_upgrade" {
 variable "apply_immediately" {
   description = "Apply changes immediately (if false, apply during maintenance window)"
   type        = bool
-  default     = false
+  default     = true
+}
+
+variable "cloudwatch_retention_days" {
+  description = "CloudWatch Logs retention period in days (1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653)"
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653], var.cloudwatch_retention_days)
+    error_message = "CloudWatch retention must be a valid value: 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, or 3653 days."
+  }
 }
 
 # ------------------------------------------------------------------------------

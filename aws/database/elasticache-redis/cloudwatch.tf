@@ -10,7 +10,7 @@
 
 resource "aws_cloudwatch_log_group" "redis_slow_log" {
   name              = "/aws/elasticache/${local.replication_group_id}/slow-log"
-  retention_in_days = 30
+  retention_in_days = var.cloudwatch_retention_days
   kms_key_id        = aws_kms_key.redis.arn
 
   tags = merge(
@@ -24,7 +24,7 @@ resource "aws_cloudwatch_log_group" "redis_slow_log" {
 
 resource "aws_cloudwatch_log_group" "redis_engine_log" {
   name              = "/aws/elasticache/${local.replication_group_id}/engine-log"
-  retention_in_days = 30
+  retention_in_days = var.cloudwatch_retention_days
   kms_key_id        = aws_kms_key.redis.arn
 
   tags = merge(
