@@ -73,7 +73,7 @@ variable "identifier_override" {
 variable "engine_version" {
   description = "PostgreSQL engine version"
   type        = string
-  default     = "16.4"
+  default     = "16.6"
 
   validation {
     condition     = can(regex("^1[6-9]\\.", var.engine_version))

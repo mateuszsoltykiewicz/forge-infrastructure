@@ -54,10 +54,10 @@ module "eks" {
   create = var.create
 
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 21.0" # Updated to support AWS provider >= 6.0
+  version = "~> 20.31" # Stable version compatible with AWS provider 5.x
 
-  name               = local.cluster_name
-  kubernetes_version = var.kubernetes_version
+  cluster_name    = local.cluster_name
+  cluster_version = var.kubernetes_version
 
   # VPC Configuration (auto-discovered)
   vpc_id                   = data.aws_vpc.main.id
@@ -65,18 +65,18 @@ module "eks" {
   control_plane_subnet_ids = aws_subnet.eks_private[*].id
 
   # Cluster Endpoint Access
-  endpoint_public_access       = var.cluster_endpoint_public_access
-  endpoint_private_access      = var.cluster_endpoint_private_access
-  endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
+  cluster_endpoint_public_access       = var.cluster_endpoint_public_access
+  cluster_endpoint_private_access      = var.cluster_endpoint_private_access
+  cluster_endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
 
   # Encryption Configuration
-  encryption_config = {
+  cluster_encryption_config = {
     resources        = ["secrets"]
     provider_key_arn = var.create ? aws_kms_key.eks[0].arn : null
   }
 
   # CloudWatch Logging
-  enabled_log_types                      = var.cluster_enabled_log_types
+  cluster_enabled_log_types              = var.cluster_enabled_log_types
   cloudwatch_log_group_retention_in_days = var.cloudwatch_log_group_retention_in_days
   cloudwatch_log_group_kms_key_id        = var.create ? aws_kms_key.eks[0].arn : null
 
@@ -108,7 +108,7 @@ module "eks" {
   )
 
   # Cluster Security Group
-  security_group_additional_rules = {
+  cluster_security_group_additional_rules = {
     ingress_nodes_ephemeral = {
       description                = "Nodes to cluster API (ephemeral ports)"
       protocol                   = "tcp"
@@ -261,7 +261,7 @@ module "eks" {
   }
 
   # EKS Add-ons
-  addons = {
+  cluster_addons = {
     # CoreDNS
     coredns = {
       most_recent = true
@@ -276,6 +276,11 @@ module "eks" {
             memory = "150Mi"
           }
         }
+        tolerations = [{
+          key      = "CriticalAddonsOnly"
+          operator = "Exists"
+          effect   = "NoSchedule"
+        }]
       })
     }
 
@@ -290,23 +295,51 @@ module "eks" {
           ENABLE_POD_ENI                    = "true"
           POD_SECURITY_GROUP_ENFORCING_MODE = "standard"
         }
+        tolerations = [{
+          key      = "CriticalAddonsOnly"
+          operator = "Exists"
+          effect   = "NoSchedule"
+        }]
       })
     }
 
     # Kube-proxy
     kube-proxy = {
       most_recent = true
+      configuration_values = jsonencode({
+        tolerations = [{
+          key      = "CriticalAddonsOnly"
+          operator = "Exists"
+          effect   = "NoSchedule"
+        }]
+      })
     }
 
     # EBS CSI Driver
     aws-ebs-csi-driver = {
       most_recent              = true
       service_account_role_arn = aws_iam_role.ebs_csi_irsa.arn
+      configuration_values = jsonencode({
+        controller = {
+          tolerations = [{
+            key      = "CriticalAddonsOnly"
+            operator = "Exists"
+            effect   = "NoSchedule"
+          }]
+        }
+      })
     }
 
     # Pod Identity Agent (newer alternative to IRSA)
     eks-pod-identity-agent = {
       most_recent = true
+      configuration_values = jsonencode({
+        tolerations = [{
+          key      = "CriticalAddonsOnly"
+          operator = "Exists"
+          effect   = "NoSchedule"
+        }]
+      })
     }
   }
 

@@ -65,9 +65,9 @@ variable "cluster_name_override" {
 }
 
 variable "kubernetes_version" {
-  description = "Kubernetes version for the EKS cluster"
+  description = "Kubernetes version to use for the EKS cluster"
   type        = string
-  default     = "1.31"
+  default     = "1.30"
 
   validation {
     condition     = can(regex("^1\\.(2[89]|3[0-9])$", var.kubernetes_version))
