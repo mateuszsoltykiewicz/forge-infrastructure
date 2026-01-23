@@ -6,11 +6,50 @@
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
+# Data Sources
+# ------------------------------------------------------------------------------
+
+data "aws_caller_identity" "current" {}
+
+# ------------------------------------------------------------------------------
+# KMS Key for S3 Encryption (Always Created)
+# ------------------------------------------------------------------------------
+
+module "kms_s3" {
+  source = "../../security/kms"
+
+  # Pattern A variables
+  common_prefix = var.common_prefix
+  common_tags   = var.common_tags
+
+  # Environment context
+  environment = var.environment
+  region      = var.region
+
+  # KMS Key configuration
+  key_purpose     = "s3-${var.bucket_purpose}"
+  key_description = local.kms_key_description
+  key_usage       = "ENCRYPT_DECRYPT"
+
+  # Security settings
+  deletion_window_in_days = var.kms_key_deletion_window
+  enable_key_rotation     = var.kms_enable_key_rotation
+
+  # Access control
+  key_administrators = length(var.kms_key_administrators) > 0 ? var.kms_key_administrators : [
+    "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+  ]
+
+  key_users = length(var.kms_key_users) > 0 ? var.kms_key_users : [
+    "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+  ]
+}
+
+# ------------------------------------------------------------------------------
 # S3 Bucket
 # ------------------------------------------------------------------------------
 
 resource "aws_s3_bucket" "main" {
-  count = var.create ? 1 : 0
 
   bucket        = local.bucket_name
   force_destroy = var.force_destroy
@@ -24,6 +63,10 @@ resource "aws_s3_bucket" "main" {
       Name = local.bucket_name
     }
   )
+
+  # lifecycle {
+  #   prevent_destroy = true
+  # }
 }
 
 # ------------------------------------------------------------------------------
@@ -31,9 +74,8 @@ resource "aws_s3_bucket" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_s3_bucket_versioning" "main" {
-  count = var.create ? 1 : 0
 
-  bucket = aws_s3_bucket.main[0].id
+  bucket = aws_s3_bucket.main.id
 
   versioning_configuration {
     status     = var.versioning_enabled ? "Enabled" : "Suspended"
@@ -42,22 +84,23 @@ resource "aws_s3_bucket_versioning" "main" {
 }
 
 # ------------------------------------------------------------------------------
-# Server-Side Encryption
+# Server-Side Encryption (Always Enabled with KMS)
 # ------------------------------------------------------------------------------
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
-  count = var.create && var.encryption_enabled ? 1 : 0
 
-  bucket = aws_s3_bucket.main[0].id
+  bucket = aws_s3_bucket.main.id
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm     = var.encryption_type
-      kms_master_key_id = var.encryption_type == "aws:kms" ? var.kms_key_id : null
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = module.kms_s3.key_arn
     }
 
-    bucket_key_enabled = var.encryption_type == "aws:kms" ? var.bucket_key_enabled : null
+    bucket_key_enabled = var.bucket_key_enabled
   }
+
+  depends_on = [module.kms_s3]
 }
 
 # ------------------------------------------------------------------------------
@@ -65,9 +108,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_s3_bucket_public_access_block" "main" {
-  count = var.create ? 1 : 0
 
-  bucket = aws_s3_bucket.main[0].id
+  bucket = aws_s3_bucket.main.id
 
   block_public_acls       = var.block_public_access ? true : var.block_public_acls
   block_public_policy     = var.block_public_access ? true : var.block_public_policy
@@ -80,9 +122,9 @@ resource "aws_s3_bucket_public_access_block" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_s3_bucket_lifecycle_configuration" "main" {
-  count = var.create && length(var.lifecycle_rules) > 0 ? 1 : 0 ? 1 : 0
+  count = length(var.lifecycle_rules) > 0 ? 1 : 0
 
-  bucket = aws_s3_bucket.main[0].id
+  bucket = aws_s3_bucket.main.id
 
   dynamic "rule" {
     for_each = var.lifecycle_rules
@@ -158,7 +200,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "main" {
 resource "aws_s3_bucket_logging" "main" {
   count = var.logging_enabled ? 1 : 0
 
-  bucket = aws_s3_bucket.main[0].id
+  bucket = aws_s3_bucket.main.id
 
   target_bucket = var.logging_target_bucket
   target_prefix = var.logging_target_prefix
@@ -174,7 +216,7 @@ resource "aws_s3_bucket_replication_configuration" "main" {
   # Must have bucket versioning enabled
   depends_on = [aws_s3_bucket_versioning.main]
 
-  bucket = aws_s3_bucket.main[0].id
+  bucket = aws_s3_bucket.main.id
   role   = var.replication_role_arn
 
   dynamic "rule" {
@@ -234,7 +276,7 @@ resource "aws_s3_bucket_replication_configuration" "main" {
 resource "aws_s3_bucket_object_lock_configuration" "main" {
   count = var.object_lock_enabled && var.object_lock_configuration != null ? 1 : 0
 
-  bucket = aws_s3_bucket.main[0].id
+  bucket = aws_s3_bucket.main.id
 
   rule {
     default_retention {
@@ -250,9 +292,9 @@ resource "aws_s3_bucket_object_lock_configuration" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_s3_bucket_cors_configuration" "main" {
-  count = var.create && length(var.cors_rules) > 0 ? 1 : 0 ? 1 : 0
+  count = length(var.cors_rules) > 0 ? 1 : 0
 
-  bucket = aws_s3_bucket.main[0].id
+  bucket = aws_s3_bucket.main.id
 
   dynamic "cors_rule" {
     for_each = var.cors_rules
@@ -274,7 +316,7 @@ resource "aws_s3_bucket_cors_configuration" "main" {
 resource "aws_s3_bucket_intelligent_tiering_configuration" "main" {
   count = var.intelligent_tiering_enabled ? 1 : 0
 
-  bucket = aws_s3_bucket.main[0].id
+  bucket = aws_s3_bucket.main.id
   name   = var.intelligent_tiering_name
 
   status = "Enabled"

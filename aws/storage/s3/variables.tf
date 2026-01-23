@@ -1,68 +1,22 @@
 # ==============================================================================
-# Resource Creation Control
-# ==============================================================================
-
-variable "create" {
-  description = "Whether to create resources. Set to false to skip resource creation."
-  type        = bool
-  default     = true
-}
-
-
-# ==============================================================================
 # S3 Module - Variables
 # ==============================================================================
 # This file defines input variables for the S3 bucket module.
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# Customer Context Variables
+# Naming Variables (Pattern A)
 # ------------------------------------------------------------------------------
 
-variable "customer_id" {
-  description = "UUID of the customer (use 00000000-0000-0000-0000-000000000000 for shared infrastructure)"
+variable "common_prefix" {
+  description = "Common prefix for all resources (e.g., forge-{environment}-{customer}-{project})"
   type        = string
-
-  validation {
-    condition     = can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.customer_id))
-    error_message = "customer_id must be a valid UUID format"
-  }
 }
 
-variable "customer_name" {
-  description = "Name of the customer (used in resource naming, e.g., 'forge', 'acme-corp')"
-  type        = string
-
-  validation {
-    condition     = can(regex("^[a-z0-9-]+$", var.customer_name))
-    error_message = "customer_name must contain only lowercase letters, numbers, and hyphens"
-  }
-}
-
-variable "architecture_type" {
-  description = "Architecture type: 'shared' (multi-tenant), 'dedicated_single_tenant', or 'dedicated_vpc'"
-  type        = string
-
-  validation {
-    condition     = contains(["shared", "dedicated_single_tenant", "dedicated_vpc"], var.architecture_type)
-    error_message = "architecture_type must be one of: shared, dedicated_single_tenant, dedicated_vpc"
-  }
-}
-
-variable "project_name" {
-  description = "Project name for project-level isolation (empty for customer-level or shared)"
-  type        = string
-  default     = ""
-}
-
-variable "plan_tier" {
-  description = "Customer plan tier: basic, pro, enterprise, or platform"
-  type        = string
-
-  validation {
-    condition     = contains(["basic", "pro", "enterprise", "platform"], var.plan_tier)
-    error_message = "plan_tier must be one of: basic, pro, enterprise, platform"
-  }
+variable "common_tags" {
+  description = "Common tags passed from root module (ManagedBy, Environment, Region, etc.)"
+  type        = map(string)
+  default     = {}
 }
 
 # ------------------------------------------------------------------------------
@@ -82,17 +36,6 @@ variable "region" {
 # ------------------------------------------------------------------------------
 # S3 Bucket Configuration
 # ------------------------------------------------------------------------------
-
-variable "bucket_name" {
-  description = "Name of the S3 bucket (leave empty for auto-generated name based on customer context)"
-  type        = string
-  default     = ""
-
-  validation {
-    condition     = var.bucket_name == "" || can(regex("^[a-z0-9][a-z0-9-]*[a-z0-9]$", var.bucket_name))
-    error_message = "bucket_name must be lowercase alphanumeric with hyphens (no underscores), and cannot start or end with hyphen"
-  }
-}
 
 variable "bucket_purpose" {
   description = "Purpose of the bucket (e.g., 'terraform-state', 'application-data', 'logs', 'backups')"
@@ -123,30 +66,36 @@ variable "versioning_mfa_delete" {
 }
 
 # ------------------------------------------------------------------------------
-# Encryption Configuration
+# KMS Key Configuration (for internal module use)
 # ------------------------------------------------------------------------------
 
-variable "encryption_enabled" {
-  description = "Enable server-side encryption for the bucket"
+variable "kms_key_deletion_window" {
+  description = "KMS key deletion window in days (7-30)"
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.kms_key_deletion_window >= 7 && var.kms_key_deletion_window <= 30
+    error_message = "KMS key deletion window must be between 7 and 30 days"
+  }
+}
+
+variable "kms_enable_key_rotation" {
+  description = "Enable automatic KMS key rotation (recommended for production)"
   type        = bool
   default     = true
 }
 
-variable "encryption_type" {
-  description = "Encryption type: 'AES256' (SSE-S3) or 'aws:kms' (SSE-KMS)"
-  type        = string
-  default     = "aws:kms"
-
-  validation {
-    condition     = contains(["AES256", "aws:kms"], var.encryption_type)
-    error_message = "encryption_type must be either 'AES256' or 'aws:kms'"
-  }
+variable "kms_key_administrators" {
+  description = "List of IAM principal ARNs that can administer the KMS key (empty = account root)"
+  type        = list(string)
+  default     = []
 }
 
-variable "kms_key_id" {
-  description = "KMS key ID/ARN for bucket encryption (required if encryption_type is 'aws:kms')"
-  type        = string
-  default     = null
+variable "kms_key_users" {
+  description = "List of IAM principal ARNs that can use the KMS key for encryption/decryption"
+  type        = list(string)
+  default     = []
 }
 
 variable "bucket_key_enabled" {
@@ -357,13 +306,35 @@ variable "intelligent_tiering_deep_archive_days" {
     error_message = "intelligent_tiering_deep_archive_days must be 0 (disabled) or between 180-730 days"
   }
 }
-
 # ------------------------------------------------------------------------------
-# Tags
+# HIPAA Log Lifecycle Configuration
 # ------------------------------------------------------------------------------
 
-variable "tags" {
-  description = "Additional tags to apply to resources"
-  type        = map(string)
-  default     = {}
+variable "enable_hipaa_log_lifecycle" {
+  description = "Enable HIPAA 7-year lifecycle rules for log prefixes (logs/cloudwatch/*, logs/kubernetes/*, metrics/cloudwatch/*, processing-failed/)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_s3_inventory" {
+  description = "Enable daily S3 inventory reports (Parquet format for Athena)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_processing_failed_alerts" {
+  description = "Enable EventBridge alerts when Firehose writes to processing-failed/ prefix (Lambda transformation errors)"
+  type        = bool
+  default     = false
+}
+
+variable "processing_failed_sns_topic_arn" {
+  description = "SNS topic ARN for processing-failed alerts (required if enable_processing_failed_alerts is true)"
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.processing_failed_sns_topic_arn == null || can(regex("^arn:aws:sns:[a-z0-9-]+:\\d+:.+$", var.processing_failed_sns_topic_arn))
+    error_message = "processing_failed_sns_topic_arn must be a valid SNS topic ARN or null"
+  }
 }
