@@ -11,88 +11,32 @@
 # ==============================================================================
 
 locals {
-  # ============================================================================
-  # SECTION 1: MODULE METADATA
-  # ============================================================================
-
-  module = "vpc"
-  family = "network"
 
   # ============================================================================
-  # SECTION 2: NAMING AND IDENTIFICATION (Multi-Tenant Pattern)
+  # SECTION 1: TAG MANAGEMENT (Multi-Tenant)
   # ============================================================================
 
-  # Detect multi-tenancy level
-  has_customer = var.customer_name != null
-  has_project  = var.project_name != null
+  vpc_name = "${var.common_prefix}-vpc"
 
-  # Three naming scenarios:
-  # 1. Shared: forge-{environment}-vpc
-  # 2. Customer: forge-{environment}-{customer}-vpc
-  # 3. Project: forge-{environment}-{customer}-{project}-vpc
-
-  name_prefix = local.has_project ? "forge-${var.environment}-${var.customer_name}-${var.project_name}" : (
-    local.has_customer ? "forge-${var.environment}-${var.customer_name}" : "forge-${var.environment}"
-  )
-
-  vpc_name_computed = "${local.name_prefix}-vpc"
-
-  # ============================================================================
-  # SECTION 3: TAG MANAGEMENT (Multi-Tenant)
-  # ============================================================================
-
-  # Base tags applied to all Forge resources
-  base_tags = {
-    ManagedBy   = "Terraform"
-    Module      = local.module
-    Family      = local.family
-    Workspace   = var.workspace
-    Environment = var.environment
+  # Module-specific tags (only VPC-specific metadata)
+  module_tags = {
+    TerraformModule = "forge/aws/network/vpc"
+    Module          = "VPC"
+    Family          = "Network"
+    CIDR            = var.cidr_block
   }
 
-  # Customer and project tags (conditional)
-  customer_tags = local.has_customer ? {
-    Customer = var.customer_name
-  } : {}
-
-  project_tags = local.has_project ? {
-    Project = var.project_name
-  } : {}
-
-  # Customer ID tag (optional for billing)
-  customer_id_tags = var.customer_id != null ? {
-    CustomerId = var.customer_id
-  } : {}
-
-  # Plan tier tag (optional for cost allocation)
-  plan_tier_tags = var.plan_tier != null ? {
-    PlanTier = var.plan_tier
-  } : {}
-
-  # VPC-specific tags
-  vpc_tags = {
-    Name = var.vpc_name
-    CIDR = var.cidr_block
-  }
-
-  # Merge all tags: base + customer + project + customer_id + plan_tier + vpc + user-provided
+  # Merge common tags from root + module-specific tags
   merged_tags = merge(
-    local.base_tags,
-    local.customer_tags,
-    local.project_tags,
-    local.customer_id_tags,
-    local.plan_tier_tags,
-    var.merged_tags
+    var.common_tags,   # Common tags from root (ManagedBy, Region, etc.)
+    local.module_tags, # Module-specific tags
   )
 }
 
 # ==============================================================================
-# Multi-Tenant Tagging Strategy:
+# Tag Management Strategy:
 # ==============================================================================
-# - All resources include Workspace and Environment for auto-discovery
-# - Customer tag added when customer_name is provided
-# - Project tag added when project_name is provided
-# - Optional CustomerId for billing integration
-# - Optional PlanTier for cost allocation
-# - Tags enable auto-discovery by downstream modules (EKS, RDS, Redis, ALB)
+# - common_tags: Passed from root module (ManagedBy, Workspace, Region, DomainName, 
+#                Customer, Project, Environment)
+# - module_tags: VPC-specific metadata (Module, Family, Name, CIDR)
 # ==============================================================================

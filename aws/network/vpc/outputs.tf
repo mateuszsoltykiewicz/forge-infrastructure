@@ -7,17 +7,17 @@
 # ------------------------------------------------------------------------------
 
 output "vpc_id" {
-  value       = var.create ? aws_vpc.this[0].id : null
+  value       = aws_vpc.this.id
   description = "The ID of the created VPC."
 }
 
 output "vpc_arn" {
-  value       = var.create ? aws_vpc.this[0].arn : null
+  value       = aws_vpc.this.arn
   description = "The Amazon Resource Name (ARN) of the created VPC."
 }
 
 output "vpc_name" {
-  value       = var.vpc_name
+  value       = local.vpc_name
   description = "The name of the VPC."
 }
 
@@ -27,77 +27,44 @@ output "cidr_block" {
 }
 
 # ------------------------------------------------------------------------------
-# Environment and Customer Context
-# ------------------------------------------------------------------------------
-
-output "workspace" {
-  value       = var.workspace
-  description = "The workspace associated with this VPC."
-}
-
-output "environment" {
-  value       = var.environment
-  description = "The environment associated with this VPC (prod, staging, dev)."
-}
-
-output "customer_id" {
-  value       = var.customer_id
-  description = "The customer UUID associated with this VPC (null for shared VPCs)."
-}
-
-output "customer_name" {
-  value       = var.customer_name
-  description = "The customer name associated with this VPC (null for shared VPCs)."
-}
-
-output "project_name" {
-  value       = var.project_name
-  description = "The project name associated with this VPC (null for non-project VPCs)."
-}
-
-# ------------------------------------------------------------------------------
-# DNS Settings
-# ------------------------------------------------------------------------------
-
-output "enable_dns_support" {
-  value       = var.create ? aws_vpc.this[0].enable_dns_support : null
-  description = "Whether DNS resolution is enabled in the VPC."
-}
-
-output "enable_dns_hostnames" {
-  value       = var.create ? aws_vpc.this[0].enable_dns_hostnames : null
-  description = "Whether DNS hostnames are enabled in the VPC."
-}
-
-# ------------------------------------------------------------------------------
 # VPC Flow Logs
 # ------------------------------------------------------------------------------
 
 output "flow_log_id" {
-  value       = var.enable_flow_logs ? aws_flow_log.main[0].id : null
+  value       = aws_flow_log.main.id
   description = "The ID of the VPC Flow Log (null if flow logs disabled)."
 }
 
 output "flow_log_arn" {
-  value       = var.enable_flow_logs ? aws_flow_log.main[0].arn : null
+  value       = aws_flow_log.main.arn
   description = "The ARN of the VPC Flow Log (null if flow logs disabled)."
 }
 
 output "flow_logs_log_group_name" {
-  value       = var.enable_flow_logs ? aws_cloudwatch_log_group.flow_logs[0].name : null
+  value       = aws_cloudwatch_log_group.flow_logs.name
   description = "The CloudWatch Log Group name for flow logs (null if disabled)."
 }
 
 output "flow_logs_iam_role_arn" {
-  value       = var.enable_flow_logs ? aws_iam_role.flow_logs[0].arn : null
+  value       = aws_iam_role.flow_logs.arn
   description = "The IAM role ARN used by VPC Flow Logs (null if disabled)."
 }
 
-# ==============================================================================
-# Multi-Tenant Outputs:
-# ==============================================================================
-# - Always output VPC ID and ARN for module composition
-# - Include workspace, environment, customer, project for downstream modules
-# - Outputs enable auto-discovery and dependency injection
-# - Use outputs to pass VPC information to EKS, RDS, Redis, ALB modules
-# ==============================================================================
+# ------------------------------------------------------------------------------
+# KMS Key for Flow Logs Encryption
+# ------------------------------------------------------------------------------
+
+output "flow_logs_kms_key_id" {
+  value       = module.kms_flow_logs.key_id
+  description = "The KMS key ID used for flow logs encryption."
+}
+
+output "flow_logs_kms_key_arn" {
+  value       = module.kms_flow_logs.key_arn
+  description = "The KMS key ARN used for flow logs encryption."
+}
+
+output "flow_logs_kms_alias_name" {
+  value       = module.kms_flow_logs.alias_name
+  description = "The KMS key alias name for flow logs encryption."
+}

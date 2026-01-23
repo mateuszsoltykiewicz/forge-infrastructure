@@ -10,19 +10,20 @@
 # ------------------------------------------------------------------------------
 
 resource "aws_cloudwatch_log_group" "flow_logs" {
-  count = var.create && var.enable_flow_logs ? 1 : 0
 
-  name              = "/aws/vpc/${var.vpc_name}/flow-logs"
+  name              = "/aws/vpc/${local.vpc_name}/flow-logs"
   retention_in_days = var.flow_logs_retention_days
-  kms_key_id        = var.flow_logs_kms_key_id
+  kms_key_id        = module.kms_flow_logs.key_arn
 
   tags = merge(
     local.merged_tags,
     {
-      Name    = "${var.vpc_name}-flow-logs"
+      Name    = "${local.vpc_name}-flow-logs"
       LogType = "vpc-flow-logs"
     }
   )
+
+  depends_on = [module.kms_flow_logs]
 }
 
 # ------------------------------------------------------------------------------
@@ -30,9 +31,8 @@ resource "aws_cloudwatch_log_group" "flow_logs" {
 # ------------------------------------------------------------------------------
 
 resource "aws_iam_role" "flow_logs" {
-  count = var.create && var.enable_flow_logs ? 1 : 0
 
-  name = "${var.vpc_name}-flow-logs-role"
+  name = "${local.vpc_name}-flow-logs-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -49,7 +49,7 @@ resource "aws_iam_role" "flow_logs" {
   tags = merge(
     local.merged_tags,
     {
-      Name = "${var.vpc_name}-flow-logs-role"
+      Name = "${local.vpc_name}-flow-logs-role"
     }
   )
 }
@@ -59,10 +59,9 @@ resource "aws_iam_role" "flow_logs" {
 # ------------------------------------------------------------------------------
 
 resource "aws_iam_role_policy" "flow_logs" {
-  count = var.enable_flow_logs ? 1 : 0
 
-  name = "${var.vpc_name}-flow-logs-policy"
-  role = aws_iam_role.flow_logs[0].id
+  name = "${local.vpc_name}-flow-logs-policy"
+  role = aws_iam_role.flow_logs.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -76,7 +75,7 @@ resource "aws_iam_role_policy" "flow_logs" {
           "logs:DescribeLogGroups",
           "logs:DescribeLogStreams"
         ]
-        Resource = "${aws_cloudwatch_log_group.flow_logs[0].arn}:*"
+        Resource = "${aws_cloudwatch_log_group.flow_logs.arn}:*"
       }
     ]
   })
@@ -87,31 +86,19 @@ resource "aws_iam_role_policy" "flow_logs" {
 # ------------------------------------------------------------------------------
 
 resource "aws_flow_log" "main" {
-  count = var.create && var.enable_flow_logs ? 1 : 0
 
-  vpc_id                   = aws_vpc.this[0].id
+  vpc_id                   = aws_vpc.this.id
   traffic_type             = var.flow_logs_traffic_type
-  iam_role_arn             = aws_iam_role.flow_logs[0].arn
+  iam_role_arn             = aws_iam_role.flow_logs.arn
   log_destination_type     = "cloud-watch-logs"
-  log_destination          = aws_cloudwatch_log_group.flow_logs[0].arn
+  log_destination          = aws_cloudwatch_log_group.flow_logs.arn
   max_aggregation_interval = var.flow_logs_aggregation_interval
 
   tags = merge(
     local.merged_tags,
     {
-      Name        = "${var.vpc_name}-flow-log"
+      Name        = "${local.vpc_name}-flow-log"
       TrafficType = var.flow_logs_traffic_type
     }
   )
 }
-
-# ==============================================================================
-# Flow Logs Best Practices:
-# ==============================================================================
-# - Enable for security monitoring and compliance
-# - Use "REJECT" traffic type for security analysis (cheaper)
-# - Use "ALL" for comprehensive network troubleshooting
-# - Set appropriate retention (7 days dev, 30-90 days prod)
-# - Use KMS encryption for sensitive environments
-# - Monitor CloudWatch costs (flow logs can be expensive)
-# ==============================================================================

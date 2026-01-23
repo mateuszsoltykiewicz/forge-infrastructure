@@ -6,14 +6,14 @@
 # ==============================================================================
 
 resource "aws_vpc" "this" {
-  count = var.create ? 1 : 0
 
   cidr_block           = var.cidr_block # The primary CIDR block for the VPC
   enable_dns_support   = true           # Enables DNS resolution within the VPC
   enable_dns_hostnames = true           # Enables DNS hostnames for instances
 
-  tags = merge(local.merged_tags, local.vpc_tags, {
+  tags = merge(local.merged_tags, {
     LastModified = plantimestamp()
+    Name         = local.vpc_name
   })
 
   lifecycle {

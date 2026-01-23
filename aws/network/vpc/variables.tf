@@ -1,15 +1,4 @@
 # ==============================================================================
-# Resource Creation Control
-# ==============================================================================
-
-variable "create" {
-  description = "Whether to create resources. Set to false to skip resource creation."
-  type        = bool
-  default     = true
-}
-
-
-# ==============================================================================
 # VPC Module Variables (Forge - Customer-Centric)
 # ==============================================================================
 
@@ -17,9 +6,9 @@ variable "create" {
 # Required Variables
 # ------------------------------------------------------------------------------
 
-variable "vpc_name" {
+variable "common_prefix" {
   type        = string
-  description = "Name of the VPC. For shared: 'forge-{workspace}-{environment}'. For dedicated: '{customer_name}-{region}'."
+  description = "Common prefix for all VPC resources (e.g., 'forge-prod-shared'). Ensures unique naming across environments and customers."
 }
 
 variable "cidr_block" {
@@ -35,73 +24,14 @@ variable "cidr_block" {
 # Forge Infrastructure Variables
 # ------------------------------------------------------------------------------
 
-variable "workspace" {
+variable "aws_region" {
   type        = string
-  description = "Terraform workspace name (e.g., 'production', 'staging', 'development')."
-  validation {
-    condition     = length(var.workspace) > 0
-    error_message = "Workspace name cannot be empty."
-  }
-}
-
-variable "environment" {
-  type        = string
-  description = "Environment identifier (e.g., 'prod', 'staging', 'dev', 'shared')."
-  validation {
-    condition     = contains(["prod", "staging", "dev", "shared"], var.environment)
-    error_message = "Environment must be one of: prod, staging, dev, shared."
-  }
-}
-
-
-
-# ------------------------------------------------------------------------------
-# Customer Context Variables (Optional - for customer-specific VPCs)
-# ------------------------------------------------------------------------------
-
-variable "customer_id" {
-  type        = string
-  description = "Customer UUID from the Forge database. Required for dedicated architectures."
-  default     = null
-}
-
-variable "customer_name" {
-  type        = string
-  description = "Customer name for resource naming and tagging (e.g., 'cronus', 'acme'). Optional."
-  default     = null
-}
-
-variable "project_name" {
-  type        = string
-  description = "Project name for resource naming and tagging (e.g., 'analytics', 'ml-platform'). Optional."
-  default     = null
-}
-
-variable "plan_tier" {
-  type        = string
-  description = "Customer plan tier (e.g., 'trial', 'basic', 'pro', 'enterprise'). Used for tagging and cost allocation."
-  default     = null
-}
-
-# ------------------------------------------------------------------------------
-# Tagging Variables
-# ------------------------------------------------------------------------------
-
-variable "merged_tags" {
-  type        = map(string)
-  description = "Additional tags to apply to the VPC for cost allocation, automation, and compliance."
-  default     = {}
+  description = "AWS region for the VPC resources."
 }
 
 # ------------------------------------------------------------------------------
 # VPC Flow Logs Configuration
 # ------------------------------------------------------------------------------
-
-variable "enable_flow_logs" {
-  description = "Enable VPC Flow Logs for network traffic monitoring and security analysis"
-  type        = bool
-  default     = true
-}
 
 variable "flow_logs_traffic_type" {
   description = "Type of traffic to capture: ALL (all traffic), ACCEPT (accepted traffic), REJECT (rejected traffic)"
@@ -125,12 +55,6 @@ variable "flow_logs_retention_days" {
   }
 }
 
-variable "flow_logs_kms_key_id" {
-  description = "KMS key ID for encrypting flow logs (optional, recommended for production)"
-  type        = string
-  default     = null
-}
-
 variable "flow_logs_aggregation_interval" {
   description = "Maximum interval for flow log aggregation in seconds (60 or 600)"
   type        = number
@@ -142,21 +66,33 @@ variable "flow_logs_aggregation_interval" {
   }
 }
 
+# ------------------------------------------------------------------------------
+# KMS Configuration for Flow Logs
+# ------------------------------------------------------------------------------
+
+variable "kms_deletion_window_in_days" {
+  description = "KMS key deletion waiting period in days (7-30)"
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.kms_deletion_window_in_days >= 7 && var.kms_deletion_window_in_days <= 30
+    error_message = "KMS deletion window must be between 7 and 30 days."
+  }
+}
+
+variable "enable_kms_key_rotation" {
+  description = "Enable automatic KMS key rotation (recommended for production)"
+  type        = bool
+  default     = true
+}
+
 # ==============================================================================
-# Multi-Tenancy Patterns:
+# Tagging
 # ==============================================================================
-# 1. Shared Infrastructure (workspace only):
-#    - customer_name = null, project_name = null
-#    - Resources: forge-{environment}-*
-#
-# 2. Customer-Specific (workspace + customer):
-#    - customer_name = "cronus", project_name = null
-#    - Resources: forge-{environment}-cronus-*
-#
-# 3. Project-Specific (workspace + customer + project):
-#    - customer_name = "cronus", project_name = "analytics"
-#    - Resources: forge-{environment}-cronus-analytics-*
-#
-# Always provide unique CIDR blocks to avoid routing conflicts.
-# Tag resources consistently for cost allocation and auto-discovery.
-# ==============================================================================
+
+variable "common_tags" {
+  description = "Common tags passed from root module (ManagedBy, Workspace, Region, DomainName, Customer, Project)"
+  type        = map(string)
+  default     = {}
+}
