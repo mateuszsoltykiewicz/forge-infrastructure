@@ -5,13 +5,6 @@
 # ==============================================================================
 
 locals {
-  # ------------------------------------------------------------------------------
-  # Multi-Tenant Detection
-  # ------------------------------------------------------------------------------
-
-  # Determine tenancy level
-  has_customer = var.customer_name != null
-  has_project  = var.project_name != null
 
   # ------------------------------------------------------------------------------
   # Service Name Processing
@@ -20,90 +13,88 @@ locals {
   # Determine if this is a standard AWS service or PrivateLink service
   is_aws_service = !can(regex("^com\\.amazonaws\\.vpce\\.", var.service_name))
 
-  # Extract service short name (e.g., "s3" from "s3" or "ec2" from "ec2")
-  # For AWS services, use the service name directly
-  # For PrivateLink, extract from the service ID
-  service_short_name = local.is_aws_service ? var.service_name : "privatelink"
+  # Extract service short name from full service name
+  # For AWS services: "com.amazonaws.us-east-1.s3" -> "s3"
+  # For PrivateLink: use "privatelink"
+  service_short_name = local.is_aws_service ? (
+    length(regexall("^com\\.amazonaws\\.[^.]+\\.(.+)$", var.service_name)) > 0 ? (
+      regexall("^com\\.amazonaws\\.[^.]+\\.(.+)$", var.service_name)[0][0]
+    ) : var.service_name
+  ) : "privatelink"
+
+  # Sanitized version of service_short_name for validation-constrained fields
+  # Replaces dots with hyphens for use in security group purpose, subnet purpose, etc.
+  # Examples: "ecr.api" -> "ecr-api", "ecr.dkr" -> "ecr-dkr"
+  service_short_name_sanitized = replace(local.service_short_name, ".", "-")
 
   # Build full service name for AWS services (com.amazonaws.region.service)
   # For PrivateLink services, use the provided service name as-is
-  full_service_name = local.is_aws_service ? (
-    "com.amazonaws.${var.region}.${var.service_name}"
-  ) : var.service_name
+  full_service_name = var.service_name
 
   # ------------------------------------------------------------------------------
   # Endpoint Naming (Multi-Tenant Pattern)
   # ------------------------------------------------------------------------------
 
-  # Three scenarios:
-  # 1. Shared: forge-{environment}-{service}-vpce
-  # 2. Customer: forge-{environment}-{customer}-{service}-vpce
-  # 3. Project: forge-{environment}-{customer}-{project}-{service}-vpce
-
-  name_prefix = local.has_project ? "forge-${var.environment}-${var.customer_name}-${var.project_name}" : (
-    local.has_customer ? "forge-${var.environment}-${var.customer_name}" : "forge-${var.environment}"
-  )
-
-  endpoint_name = "${local.name_prefix}-${local.service_short_name}-vpce"
+  endpoint_name = "${var.common_prefix}-${local.service_short_name}-vpce"
 
   # ------------------------------------------------------------------------------
   # Endpoint Type Validation
   # ------------------------------------------------------------------------------
 
   # Gateway endpoints only support S3 and DynamoDB
-  is_gateway_service = contains(["s3", "dynamodb"], var.service_name)
+  is_gateway_service = contains(["s3", "dynamodb"], local.service_short_name)
+  # Interface endpoints support a wide range of services
+  is_interface_service = contains([
+    "ec2", "ec2messages", "sns", "sqs", "kms", "secretsmanager", "ssm", "ssmmessages",
+    "cloudwatch", "logs", "monitoring", "ecr.api", "ecr.dkr", "codebuild",
+    "codepipeline", "elasticloadbalancing", "elasticfilesystem", "cloudformation",
+    "cloudfront", "appmesh", "appconfig", "sts", "autoscaling", "eks", "eks-auth",
+    "lambda", "kinesis-streams", "kinesis-firehose", "rds", "elasticache", "pi"
+  ], local.service_short_name)
+  # Gateway Load Balancer endpoints support specific services
+  is_gwlb_service = contains(["gwlb"], local.service_short_name)
 
-  # Validate endpoint type matches service
-  endpoint_type_valid = (
-    (var.endpoint_type == "Gateway" && local.is_gateway_service) ||
-    (var.endpoint_type != "Gateway" && !local.is_gateway_service) ||
-    (var.endpoint_type == "Interface" && local.is_gateway_service) # Interface works for all services
-  )
 
-  # ------------------------------------------------------------------------------
-  # Configuration Validation
-  # ------------------------------------------------------------------------------
+  # Determine endpoint type based on is_gateway_service, is_interface_service, is_gwlb_service
+  # there is no var.endpoint_type variable anymore. Following zero config
+  # Check which type from local.is_{} is true and assign the endpoint type accordingly
+  endpoint_type = local.is_gateway_service ? "Gateway" : local.is_interface_service ? "Interface" : local.is_gwlb_service ? "GatewayLoadBalancer" : "Unknown"
 
-  # Interface/GWLB endpoints require subnet_ids
-  requires_subnets = contains(["Interface", "GatewayLoadBalancer"], var.endpoint_type)
-  has_subnets      = length(var.subnet_ids) > 0
+  # Check if endpoint type is valid
+  endpoint_type_valid = local.endpoint_type != "Unknown"
 
-  # Interface endpoints require security_group_ids
-  requires_security_groups = var.endpoint_type == "Interface"
-  has_security_groups      = length(var.security_group_ids) > 0
+  # Validate if subnets are required
+  subnets_required_types = ["Interface", "GatewayLoadBalancer"]
+  subnets_required       = contains(local.subnets_required_types, local.endpoint_type)
+  # Validate if subnets are provided when required
+  has_subnets = local.subnets_required ? length(var.subnet_ids) > 0 : true
 
-  # Gateway endpoints require route_table_ids
-  requires_route_tables = var.endpoint_type == "Gateway"
-  has_route_tables      = length(var.route_table_ids) > 0
+
+  # Validate if security groups are required
+  security_group_required = local.endpoint_type == "Interface"
+  # Has security groups created when required
+
+  # Validate if route tables are required
+  route_tables_required = local.endpoint_type == "Gateway"
+  # Validate if route tables are provided when required
+  has_route_tables = local.route_tables_required ? length(var.route_table_ids) > 0 : true
 
   # ------------------------------------------------------------------------------
   # Tagging Strategy (Multi-Tenant)
   # ------------------------------------------------------------------------------
 
   # Base tags applied to all resources
-  base_tags = {
-    Environment     = var.environment
-    ManagedBy       = "Terraform"
-    TerraformModule = "network/vpc-endpoint"
-    Workspace       = var.workspace
+  module_tags = {
+    TerraformModule = "forge/aws/network/vpc-endpoint"
     ServiceName     = local.service_short_name
-    EndpointType    = var.endpoint_type
+    EndpointType    = local.endpoint_type
+    Module          = "VPCEndpoint"
+    Family          = "Network"
   }
-
-  # Customer and project tags (conditional)
-  customer_tags = local.has_customer ? {
-    Customer = var.customer_name
-  } : {}
-
-  project_tags = local.has_project ? {
-    Project = var.project_name
-  } : {}
 
   # Merge all tags
   merged_tags = merge(
-    local.base_tags,
-    local.customer_tags,
-    local.project_tags,
-    var.tags
+    local.module_tags,
+    var.common_tags
   )
 }
