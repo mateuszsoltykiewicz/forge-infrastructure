@@ -5,43 +5,6 @@
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# Workspace Configuration
-# ------------------------------------------------------------------------------
-
-variable "workspace" {
-  description = "Workspace identifier for all resources (e.g., 'forge-platform')"
-  type        = string
-  default     = "forge-platform"
-
-  validation {
-    condition     = length(var.workspace) > 0
-    error_message = "Workspace must not be empty."
-  }
-}
-
-# ------------------------------------------------------------------------------
-# Environment Flags (Enable/Disable Environments)
-# ------------------------------------------------------------------------------
-
-variable "enable_production" {
-  description = "Enable production environment deployment"
-  type        = bool
-  default     = true
-}
-
-variable "enable_staging" {
-  description = "Enable staging environment deployment"
-  type        = bool
-  default     = true
-}
-
-variable "enable_development" {
-  description = "Enable development environment deployment"
-  type        = bool
-  default     = true
-}
-
-# ------------------------------------------------------------------------------
 # Customer Context (Optional - for customer-specific deployments)
 # ------------------------------------------------------------------------------
 
@@ -79,39 +42,6 @@ variable "vpc_cidr" {
 variable "domain_name" {
   description = "Base domain name for the infrastructure (e.g., 'insighthealth.io')"
   type        = string
-  default     = "insighthealth.io"
-}
-
-# ------------------------------------------------------------------------------
-# Resource Sharing Configuration
-# ------------------------------------------------------------------------------
-
-variable "shared_database_environments" {
-  description = "List of environments sharing the production database (e.g., ['staging', 'development'])"
-  type        = list(string)
-  default     = ["staging", "development"]
-
-  validation {
-    condition = alltrue([
-      for env in var.shared_database_environments :
-      contains(["staging", "development"], env)
-    ])
-    error_message = "Only staging and development can share databases with production."
-  }
-}
-
-variable "shared_redis_environments" {
-  description = "List of environments sharing the production Redis cluster (e.g., ['staging', 'development'])"
-  type        = list(string)
-  default     = ["staging", "development"]
-
-  validation {
-    condition = alltrue([
-      for env in var.shared_redis_environments :
-      contains(["staging", "development"], env)
-    ])
-    error_message = "Only staging and development can share Redis with production."
-  }
 }
 
 # ------------------------------------------------------------------------------
@@ -127,13 +57,13 @@ variable "eks_kubernetes_version" {
 variable "eks_node_instance_types" {
   description = "Instance types for EKS managed node groups"
   type        = list(string)
-  default     = ["t3.large"]
+  default     = ["m7g.2xlarge", "m7g.xlarge"]
 }
 
 variable "eks_node_desired_size" {
   description = "Desired number of nodes in the EKS node group"
   type        = number
-  default     = 3
+  default     = 2
 }
 
 variable "eks_node_min_size" {
@@ -145,7 +75,7 @@ variable "eks_node_min_size" {
 variable "eks_node_max_size" {
   description = "Maximum number of nodes in the EKS node group"
   type        = number
-  default     = 6
+  default     = 2
 }
 
 # ------------------------------------------------------------------------------
@@ -181,81 +111,23 @@ variable "redis_num_cache_nodes" {
 }
 
 # ------------------------------------------------------------------------------
-# ALB Configuration
+# DR Tags
 # ------------------------------------------------------------------------------
 
-variable "alb_certificate_arn" {
-  description = "ACM certificate ARN for HTTPS listeners (wildcard *.insighthealth.io)"
-  type        = string
-  default     = null # Must be created manually or via separate ACM module
-}
-
-# ------------------------------------------------------------------------------
-# NodePort Configuration (EKS Service Ports)
-# ------------------------------------------------------------------------------
-
-variable "nodeport_production" {
-  description = "NodePort for production environment service"
-  type        = number
-  default     = 30082
-
-  validation {
-    condition     = var.nodeport_production >= 30000 && var.nodeport_production <= 32767
-    error_message = "NodePort must be in range 30000-32767."
-  }
-}
-
-variable "nodeport_staging" {
-  description = "NodePort for staging environment service"
-  type        = number
-  default     = 30081
-
-  validation {
-    condition     = var.nodeport_staging >= 30000 && var.nodeport_staging <= 32767
-    error_message = "NodePort must be in range 30000-32767."
-  }
-}
-
-variable "nodeport_development" {
-  description = "NodePort for development environment service"
-  type        = number
-  default     = 30080
-
-  validation {
-    condition     = var.nodeport_development >= 30000 && var.nodeport_development <= 32767
-    error_message = "NodePort must be in range 30000-32767."
-  }
-}
-
-# ------------------------------------------------------------------------------
-# Tags
-# ------------------------------------------------------------------------------
-
-variable "tags" {
-  description = "Additional tags to apply to all resources"
+variable "dr_tags" {
+  description = "Additional tags for Disaster Recovery environment"
   type        = map(string)
   default     = {}
+
 }
 
 # ------------------------------------------------------------------------------
 # VPC Endpoints Configuration (Future Private Deployment)
 # ------------------------------------------------------------------------------
 
-variable "enable_vpc_endpoints" {
-  description = "Enable VPC Endpoints for private AWS service access (default: false)"
-  type        = bool
-  default     = false
-}
-
 # ------------------------------------------------------------------------------
 # VPN Configuration (Future Private Deployment)
 # ------------------------------------------------------------------------------
-
-variable "enable_vpn" {
-  description = "Enable AWS Client VPN Endpoint for private access (default: false)"
-  type        = bool
-  default     = false
-}
 
 variable "vpn_client_cidr_block" {
   description = "CIDR block for VPN clients (e.g., '172.16.0.0/22')"
@@ -355,34 +227,83 @@ variable "vpn_enable_self_service_portal" {
 }
 
 # ------------------------------------------------------------------------------
-# EKS Endpoint Access Configuration
+# AWS Regions
 # ------------------------------------------------------------------------------
 
-variable "eks_endpoint_public_access" {
-  description = "Enable public access to EKS API endpoint (default: true, set false when VPN enabled)"
-  type        = bool
-  default     = true
-}
-
-variable "eks_endpoint_private_access" {
-  description = "Enable private access to EKS API endpoint (default: true)"
-  type        = bool
-  default     = true
-}
-
-variable "eks_public_access_cidrs" {
-  description = "CIDR blocks allowed to access EKS public endpoint (default: ['0.0.0.0/0'])"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
-}
-
-# ------------------------------------------------------------------------------
-# AWS Region (for VPC Endpoints)
-# ------------------------------------------------------------------------------
-
-variable "aws_region" {
+variable "primary_aws_region" {
   description = "AWS region for deployment (e.g., 'us-east-1')"
   type        = string
-  default     = "us-east-1"
+  default     = "us-east-2"
+
+  # Validate with regex if region name matches AWS region pattern
+  validation {
+    condition     = can(regex("^[a-z]{2}-[a-z]+-\\d{1}$", var.primary_aws_region))
+    error_message = "Primary AWS region must be a valid AWS region format (e.g., 'us-east-1')."
+  }
 }
 
+variable "secondary_aws_region" {
+  description = "Secondary AWS region for Disaster Recovery (e.g., 'us-west-2')"
+  type        = string
+  default     = "us-west-2"
+
+  # Validate with regex if region name matches AWS region pattern
+  validation {
+    condition     = can(regex("^[a-z]{2}-[a-z]+-\\d{1}$", var.secondary_aws_region))
+    error_message = "Secondary AWS region must be a valid AWS region format (e.g., 'us-west-2')."
+  }
+}
+
+variable "current_region" {
+  description = "Current AWS region for this deployment (set to primary or secondary region)"
+  type        = string
+  default = "us-east-2"
+
+  # Validate if current region variable matches either primary or secondary region
+  validation {
+    condition     = contains([var.primary_aws_region, var.secondary_aws_region], var.current_region)
+    error_message = "Current region must be either the primary or secondary AWS region."
+  }
+
+  # Validate with regex if region name matches AWS region pattern
+  validation {
+    condition     = can(regex("^[a-z]{2}-[a-z]+-\\d{1}$", var.current_region))
+    error_message = "Current AWS region must be a valid AWS region format (e.g., 'us-east-1' or 'us-west-2')."
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Active environments configuration
+# ------------------------------------------------------------------------------
+variable "environments" {
+  description = "List of active environments to deploy (e.g., ['production', 'staging', 'development', 'shared'])"
+  type        = list(string)
+  nullable    = true
+}
+
+# ---------------------------------------------------------------------------------
+# Workspace tenant name
+# ---------------------------------------------------------------------------------
+variable "workspace" {
+  description = "Workspace tenant name (for multi-tenant setups) to differentiate security groups"
+  type        = string
+  default     = "Shared"
+}
+
+# ------------------------------------------------------------------------------
+# DR Tenant Name
+# ------------------------------------------------------------------------------
+variable "dr_tenant" {
+  description = "DR Tenant Name (for multi-tenant setups) to differentiate security groups in DR scenarios"
+  type        = string
+  default     = "Primary"
+}
+
+# ------------------------------------------------------------------------------
+# DR Type
+# ------------------------------------------------------------------------------
+variable "dr_type" {
+  description = "Disaster Recovery Type (e.g.,'WarmStandby')"
+  type        = string
+  default     = "WarmStandby"
+}

@@ -1,7 +1,7 @@
 # ==============================================================================
-# Root Module - Outputs
+# Root Module Outputs
 # ==============================================================================
-# This file exports essential information about the deployed infrastructure.
+# All outputs are passed through from the principal module
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -10,12 +10,31 @@
 
 output "vpc_id" {
   description = "ID of the VPC"
-  value       = module.vpc.vpc_id
+  value       = module.principal.vpc_id
 }
 
 output "vpc_cidr" {
   description = "CIDR block of the VPC"
-  value       = module.vpc.cidr_block
+  value       = module.principal.vpc_cidr
+}
+
+# ------------------------------------------------------------------------------
+# Route 53 Outputs
+# ------------------------------------------------------------------------------
+
+output "route53_zone_id" {
+  description = "Route53 hosted zone ID for DNS records"
+  value       = module.principal.route53_zone_id
+}
+
+output "route53_zone_name" {
+  description = "Route53 hosted zone name (domain)"
+  value       = module.principal.route53_zone_name
+}
+
+output "route53_name_servers" {
+  description = "Name servers for domain delegation"
+  value       = module.principal.route53_name_servers
 }
 
 # ------------------------------------------------------------------------------
@@ -24,27 +43,22 @@ output "vpc_cidr" {
 
 output "eks_cluster_name" {
   description = "Name of the EKS cluster"
-  value       = module.eks.cluster_name
+  value       = module.principal.eks_cluster_name
 }
 
 output "eks_cluster_endpoint" {
   description = "Endpoint for the EKS cluster API server"
-  value       = module.eks.cluster_endpoint
+  value       = module.principal.eks_cluster_endpoint
 }
 
 output "eks_cluster_version" {
   description = "Kubernetes version of the EKS cluster"
-  value       = module.eks.cluster_version
+  value       = module.principal.eks_cluster_version
 }
 
 output "eks_kubectl_config_command" {
   description = "Command to update kubeconfig for this cluster"
-  value       = "aws eks update-kubeconfig --region us-east-1 --name ${module.eks.cluster_name}"
-}
-
-output "eks_namespaces" {
-  description = "List of Kubernetes namespaces created"
-  value       = keys(local.eks_namespaces)
+  value       = module.principal.eks_kubectl_config_command
 }
 
 # ------------------------------------------------------------------------------
@@ -53,174 +67,64 @@ output "eks_namespaces" {
 
 output "alb_dns_names" {
   description = "DNS names of the Application Load Balancers"
-  value = {
-    for env_key, alb in module.alb :
-    env_key => alb.alb_dns_name
-  }
+  value       = module.principal.alb_dns_names
 }
 
 output "alb_arns" {
   description = "ARNs of the Application Load Balancers"
-  value = {
-    for env_key, alb in module.alb :
-    env_key => alb.alb_arn
-  }
+  value       = module.principal.alb_arns
 }
 
 output "alb_zone_ids" {
   description = "Route53 zone IDs for the ALBs (for alias records)"
-  value = {
-    for env_key, alb in module.alb :
-    env_key => alb.alb_zone_id
-  }
-}
-
-# ------------------------------------------------------------------------------
-# RDS Outputs
-# ------------------------------------------------------------------------------
-
-output "rds_production_endpoint" {
-  description = "Production RDS endpoint"
-  value       = var.enable_production ? module.rds_production[0].endpoint : null
-}
-
-output "rds_production_port" {
-  description = "Production RDS port"
-  value       = var.enable_production ? module.rds_production[0].port : null
-}
-
-output "rds_production_identifier" {
-  description = "Production RDS identifier"
-  value       = var.enable_production ? module.rds_production[0].db_instance_identifier : null
-}
-
-output "rds_staging_endpoint" {
-  description = "Staging RDS endpoint (if dedicated)"
-  value       = local.create_staging_db && var.enable_staging ? module.rds_staging[0].endpoint : null
-}
-
-output "rds_development_endpoint" {
-  description = "Development RDS endpoint (if dedicated)"
-  value       = local.create_development_db && var.enable_development ? module.rds_development[0].endpoint : null
+  value       = module.principal.alb_zone_ids
 }
 
 # ------------------------------------------------------------------------------
 # Redis Outputs
 # ------------------------------------------------------------------------------
 
-output "redis_production_endpoint" {
-  description = "Production Redis endpoint"
-  value       = var.enable_production ? module.redis_production[0].primary_endpoint_address : null
+output "redis_endpoint" {
+  description = "Redis primary endpoint address"
+  value       = module.principal.redis_endpoint
 }
 
-output "redis_production_port" {
-  description = "Production Redis port"
-  value       = var.enable_production ? module.redis_production[0].port : null
-}
-
-output "redis_staging_endpoint" {
-  description = "Staging Redis endpoint (if dedicated)"
-  value       = local.create_staging_redis && var.enable_staging ? module.redis_staging[0].primary_endpoint_address : null
-}
-
-output "redis_development_endpoint" {
-  description = "Development Redis endpoint (if dedicated)"
-  value       = local.create_development_redis && var.enable_development ? module.redis_development[0].primary_endpoint_address : null
+output "redis_subnet_ids" {
+  description = "Redis subnet IDs"
+  value       = module.principal.redis_subnet_ids
 }
 
 # ------------------------------------------------------------------------------
-# DNS Configuration Outputs
+# ECR Outputs
+# ------------------------------------------------------------------------------
+# ECR repository managed outside Terraform
+# Manual reference: 398456183268.dkr.ecr.us-east-1.amazonaws.com/san-cro-p-use1-lambda-log-transformer-production:latest
+
+# ------------------------------------------------------------------------------
+# Observability Outputs (Logging & Monitoring)
 # ------------------------------------------------------------------------------
 
-output "dns_records_to_create" {
-  description = "Route53 DNS records to create manually or via Route53 module"
-  value = {
-    for env_key, alb in module.alb :
-    env_key => {
-      name = "${local.all_environments[env_key].subdomain}.${var.domain_name}"
-      type = "A"
-      alias = {
-        name    = alb.alb_dns_name
-        zone_id = alb.alb_zone_id
-      }
-    }
-  }
+output "s3_logs_bucket_name" {
+  description = "S3 bucket name for HIPAA logs storage"
+  value       = module.principal.s3_logs_bucket_name
 }
 
-# ------------------------------------------------------------------------------
-# Environment Configuration Summary
-# ------------------------------------------------------------------------------
-
-output "active_environments" {
-  description = "List of active environments"
-  value       = keys(local.active_environments)
+output "s3_logs_bucket_arn" {
+  description = "S3 bucket ARN for HIPAA logs storage"
+  value       = module.principal.s3_logs_bucket_arn
 }
 
-output "resource_sharing_summary" {
-  description = "Summary of resource sharing configuration"
-  value = {
-    database = {
-      production_shared_with = var.shared_database_environments
-      staging_dedicated      = local.create_staging_db
-      development_dedicated  = local.create_development_db
-    }
-    redis = {
-      production_shared_with = var.shared_redis_environments
-      staging_dedicated      = local.create_staging_redis
-      development_dedicated  = local.create_development_redis
-    }
-  }
+output "lambda_log_transformer_function_arn" {
+  description = "Lambda Log Transformer function ARN"
+  value       = module.principal.lambda_log_transformer_function_arn
 }
 
-# ------------------------------------------------------------------------------
-# Deployment Instructions
-# ------------------------------------------------------------------------------
-
-output "next_steps" {
-  description = "Next steps after infrastructure deployment"
-  value = <<-EOT
-    ========================================
-    Infrastructure Deployment Complete!
-    ========================================
-    
-    1. Configure kubectl:
-       ${module.eks.kubectl_config_command}
-    
-    2. Create Route53 DNS records:
-       %{for env_key, record in {
-  for env_key, alb in module.alb :
-  env_key => {
-    name   = "${local.all_environments[env_key].subdomain}.${var.domain_name}"
-    type   = "A (Alias)"
-    target = alb.alb_dns_name
-  }
-} ~}
-       - ${record.name} -> ${record.target} (${record.type})
-       %{endfor~}
-    
-    3. Verify deployment:
-       kubectl get namespaces
-       kubectl get nodes
-       kubectl get svc -n prod-cronus
-    
-    4. Deploy applications:
-       kubectl apply -f manifests/ -n prod-cronus
-    
-    5. Access endpoints:
-       %{for env_key in keys(local.active_environments)~}
-       - ${local.all_environments[env_key].subdomain}.${var.domain_name}
-       %{endfor~}
-    
-    ========================================
-  EOT
+output "firehose_stream_arns" {
+  description = "Kinesis Firehose delivery stream ARNs"
+  value       = module.principal.firehose_stream_arns
 }
 
-# ==============================================================================
-# Output Best Practices:
-# ==============================================================================
-# - Export all critical resource identifiers (IDs, ARNs, endpoints)
-# - Provide DNS configuration for manual Route53 setup
-# - Include kubectl commands for cluster access
-# - Show resource sharing configuration for transparency
-# - Provide next steps for deployment verification
-# ==============================================================================
+output "firehose_stream_names" {
+  description = "Kinesis Firehose delivery stream names"
+  value       = module.principal.firehose_stream_names
+}
