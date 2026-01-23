@@ -4,39 +4,17 @@
 # This file defines input variables for the SSM parameter module.
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# Customer Context Variables
-# ------------------------------------------------------------------------------
+# ==============================================================================
+# Common Configuration (Pattern A)
+# ==============================================================================
 
-variable "create" {
-  description = "Whether to create the SSM parameter. Set to false to skip resource creation."
-  type        = bool
-  default     = true
-}
-
-variable "customer_name" {
-  description = "Name of the customer (used in resource naming, e.g., 'forge', 'acme-corp')"
+variable "common_prefix" {
+  description = "Common prefix for SSM parameter path construction (e.g., forge-production-customer-project)"
   type        = string
 
   validation {
-    condition     = can(regex("^[a-z0-9-]+$", var.customer_name))
-    error_message = "customer_name must contain only lowercase letters, numbers, and hyphens"
-  }
-}
-
-variable "project_name" {
-  description = "Project name for multi-tenant deployments"
-  type        = string
-  default     = null
-}
-
-variable "plan_tier" {
-  description = "Customer plan tier: basic, pro, enterprise, or platform"
-  type        = string
-
-  validation {
-    condition     = contains(["basic", "pro", "enterprise", "platform"], var.plan_tier)
-    error_message = "plan_tier must be one of: basic, pro, enterprise, platform"
+    condition     = length(var.common_prefix) > 0
+    error_message = "common_prefix must not be empty"
   }
 }
 
@@ -102,6 +80,12 @@ variable "parameter_tier" {
   }
 }
 
+variable "description" {
+  description = "Description of the SSM parameter"
+  type        = string
+  default     = "SSM Parameter managed by Terraform"
+}
+
 # ------------------------------------------------------------------------------
 # Hierarchical Path Configuration
 # ------------------------------------------------------------------------------
@@ -161,11 +145,11 @@ variable "overwrite" {
 }
 
 # ------------------------------------------------------------------------------
-# Tags
+# Tags Configuration
 # ------------------------------------------------------------------------------
 
-variable "tags" {
-  description = "Additional tags to apply to resources"
+variable "common_tags" {
+  description = "Common tags to apply to all resources (passed from root module)"
   type        = map(string)
   default     = {}
 }

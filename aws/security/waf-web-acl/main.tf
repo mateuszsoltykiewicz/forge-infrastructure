@@ -1,64 +1,112 @@
-# ========================================
-# IP Sets (Allow/Block Lists)
-# ========================================
+# ==============================================================================
+# WAF Web ACL Module - Main Resources (Refactored)
+# ==============================================================================
+# Opinionated WAF configuration with:
+# - Always-on logging to CloudWatch
+# - Geographic allowlist (8 countries only)
+# - Rate limiting (DDoS protection)
+# - AWS Managed Rules: Core, Known Bad Inputs, SQLi, IP Reputation
+# - Optional internal KMS key creation
+# ==============================================================================
 
-# IP Allow List
-resource "aws_wafv2_ip_set" "allow_list" {
-  count = var.create && local.has_ip_allow_list ? 1 : 0
+# ==============================================================================
+# Data Sources
+# ==============================================================================
 
-  name               = "${local.waf_name}-allow-list"
-  description        = "IP addresses allowed to bypass WAF rules"
-  scope              = var.scope
-  ip_address_version = "IPV4"
-  addresses          = var.ip_allow_list
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
 
-  tags = merge(
-    local.merged_tags,
-    {
-      Name = "${local.waf_name}-allow-list"
-      Type = "allow-list"
-    }
-  )
+# ==============================================================================
+# KMS Key for CloudWatch Logs Encryption (Optional Internal)
+# ==============================================================================
 
-  lifecycle {
-    create_before_destroy = true
-  }
+resource "aws_kms_key" "waf_logs" {
+  count = var.create_kms_key ? 1 : 0
+
+  description             = "KMS key for WAF CloudWatch Logs encryption - ${local.waf_name}"
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+
+  tags = merge(local.merged_tags, {
+    Purpose = "WAF-Logs-Encryption"
+  })
 }
 
-# IP Block List
-resource "aws_wafv2_ip_set" "block_list" {
-  count = var.create && local.has_ip_block_list ? 1 : 0
+resource "aws_kms_alias" "waf_logs" {
+  count = var.create_kms_key ? 1 : 0
 
-  name               = "${local.waf_name}-block-list"
-  description        = "IP addresses explicitly blocked by WAF"
-  scope              = var.scope
-  ip_address_version = "IPV4"
-  addresses          = var.ip_block_list
-
-  tags = merge(
-    local.merged_tags,
-    {
-      Name = "${local.waf_name}-block-list"
-      Type = "block-list"
-    }
-  )
-
-  lifecycle {
-    create_before_destroy = true
-  }
+  name          = "alias/${local.waf_name}-logs"
+  target_key_id = aws_kms_key.waf_logs[0].key_id
 }
 
-# ========================================
+# KMS Key Policy to allow CloudWatch Logs to use the key
+resource "aws_kms_key_policy" "waf_logs" {
+  count = var.create_kms_key ? 1 : 0
+
+  key_id = aws_kms_key.waf_logs[0].id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "Allow CloudWatch Logs"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:CreateGrant",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/wafv2/${local.waf_name}"
+          }
+        }
+      }
+    ]
+  })
+}
+
+# ==============================================================================
+# CloudWatch Log Group (ALWAYS ENABLED)
+# ==============================================================================
+
+resource "aws_cloudwatch_log_group" "waf" {
+  name              = "/aws/wafv2/${local.waf_name}"
+  retention_in_days = var.log_retention_days
+  kms_key_id        = local.kms_key_id
+
+  tags = local.merged_tags
+
+  depends_on = [
+    aws_kms_key_policy.waf_logs
+  ]
+}
+
+# ==============================================================================
 # WAF Web ACL
-# ========================================
+# ==============================================================================
 
-resource "aws_wafv2_web_acl" "main" {
-  count = var.create ? 1 : 0
-
+resource "aws_wafv2_web_acl" "this" {
   name        = local.waf_name
-  description = "WAF Web ACL for ${var.customer_name} ${var.environment} environment"
+  description = "WAF Web ACL with Core Rules, SQLi, Rate Limit, Geo-allowlist: ${join(", ", local.allowed_countries)}"
   scope       = var.scope
 
+  # Default action when no rules match
   default_action {
     dynamic "allow" {
       for_each = var.default_action == "allow" ? [1] : []
@@ -71,310 +119,187 @@ resource "aws_wafv2_web_acl" "main" {
     }
   }
 
-  # Rule 1: IP Allow List (highest priority)
-  dynamic "rule" {
-    for_each = local.has_ip_allow_list ? [1] : []
+  # ------------------------------------------------------------------------------
+  # Rule 1: Rate Limiting (DDoS Protection) - Priority 1
+  # ------------------------------------------------------------------------------
 
-    content {
-      name     = "IPAllowList"
-      priority = var.ip_allow_list_priority
+  rule {
+    name     = "RateLimitRule"
+    priority = 1
 
-      action {
-        allow {}
+    action {
+      block {}
+    }
+
+    statement {
+      rate_based_statement {
+        limit              = var.rate_limit_requests
+        aggregate_key_type = "IP"
       }
+    }
 
-      statement {
-        ip_set_reference_statement {
-          arn = aws_wafv2_ip_set.allow_list[0].arn
-        }
-      }
-
-      visibility_config {
-        cloudwatch_metrics_enabled = var.enable_cloudwatch_metrics
-        sampled_requests_enabled   = var.enable_sampled_requests
-        metric_name                = "IPAllowList"
-      }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${local.waf_name}-rate-limit"
+      sampled_requests_enabled   = true
     }
   }
 
-  # Rule 2: Rate Limiting
-  dynamic "rule" {
-    for_each = var.rate_limit_enabled ? [1] : []
+  # ------------------------------------------------------------------------------
+  # Rule 2: Geographic Allowlist (Block all except 8 countries) - Priority 5
+  # ------------------------------------------------------------------------------
 
-    content {
-      name     = "RateLimitRule"
-      priority = var.rate_limit_priority
+  rule {
+    name     = "GeoAllowlistRule"
+    priority = 5
 
-      dynamic "action" {
-        for_each = var.rate_limit_action == "block" ? [1] : []
-        content {
-          block {}
-        }
-      }
-
-      dynamic "action" {
-        for_each = var.rate_limit_action == "count" ? [1] : []
-        content {
-          count {}
-        }
-      }
-
-      dynamic "action" {
-        for_each = var.rate_limit_action == "captcha" ? [1] : []
-        content {
-          captcha {}
-        }
-      }
-
-      statement {
-        rate_based_statement {
-          limit              = var.rate_limit_requests
-          aggregate_key_type = "IP"
-        }
-      }
-
-      visibility_config {
-        cloudwatch_metrics_enabled = var.enable_cloudwatch_metrics
-        sampled_requests_enabled   = var.enable_sampled_requests
-        metric_name                = "RateLimitRule"
-      }
+    action {
+      block {}
     }
-  }
 
-  # Rule 3: Geographic Blocking
-  dynamic "rule" {
-    for_each = local.has_geo_blocking ? [1] : []
-
-    content {
-      name     = "GeoBlockRule"
-      priority = var.geo_blocking_priority
-
-      dynamic "action" {
-        for_each = var.geo_blocking_action == "block" ? [1] : []
-        content {
-          block {}
-        }
-      }
-
-      dynamic "action" {
-        for_each = var.geo_blocking_action == "count" ? [1] : []
-        content {
-          count {}
-        }
-      }
-
-      statement {
-        geo_match_statement {
-          country_codes = var.geo_blocking_countries
-        }
-      }
-
-      visibility_config {
-        cloudwatch_metrics_enabled = var.enable_cloudwatch_metrics
-        sampled_requests_enabled   = var.enable_sampled_requests
-        metric_name                = "GeoBlockRule"
-      }
-    }
-  }
-
-  # Rule 4: IP Block List
-  dynamic "rule" {
-    for_each = local.has_ip_block_list ? [1] : []
-
-    content {
-      name     = "IPBlockList"
-      priority = var.ip_block_list_priority
-
-      action {
-        block {}
-      }
-
-      statement {
-        ip_set_reference_statement {
-          arn = aws_wafv2_ip_set.block_list[0].arn
-        }
-      }
-
-      visibility_config {
-        cloudwatch_metrics_enabled = var.enable_cloudwatch_metrics
-        sampled_requests_enabled   = var.enable_sampled_requests
-        metric_name                = "IPBlockList"
-      }
-    }
-  }
-
-  # Rules 5+: AWS Managed Rule Groups
-  dynamic "rule" {
-    for_each = local.enabled_managed_rule_groups
-
-    content {
-      name     = rule.value.name
-      priority = rule.value.priority
-
-      override_action {
-        none {}
-      }
-
-      statement {
-        managed_rule_group_statement {
-          vendor_name = rule.value.vendor
-          name        = rule.value.name
-
-          dynamic "excluded_rule" {
-            for_each = rule.value.excluded_rules
-
-            content {
-              name = excluded_rule.value
-            }
+    statement {
+      not_statement {
+        statement {
+          geo_match_statement {
+            country_codes = local.allowed_countries
           }
         }
       }
+    }
 
-      visibility_config {
-        cloudwatch_metrics_enabled = var.enable_cloudwatch_metrics
-        sampled_requests_enabled   = var.enable_sampled_requests
-        metric_name                = rule.value.name
-      }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${local.waf_name}-geo-allowlist"
+      sampled_requests_enabled   = true
     }
   }
 
-  # Custom Rules
-  dynamic "rule" {
-    for_each = var.custom_rules
+  # ------------------------------------------------------------------------------
+  # Rule 3: AWS Managed - Core Rule Set - Priority 20
+  # ------------------------------------------------------------------------------
 
-    content {
-      name     = rule.value.name
-      priority = rule.value.priority
+  rule {
+    name     = "AWSManagedRulesCommonRuleSet"
+    priority = 20
 
-      dynamic "action" {
-        for_each = rule.value.action == "block" ? [1] : []
-        content {
-          block {}
-        }
-      }
+    override_action {
+      none {}
+    }
 
-      dynamic "action" {
-        for_each = rule.value.action == "allow" ? [1] : []
-        content {
-          allow {}
-        }
-      }
-
-      dynamic "action" {
-        for_each = rule.value.action == "count" ? [1] : []
-        content {
-          count {}
-        }
-      }
-
-      dynamic "action" {
-        for_each = rule.value.action == "captcha" ? [1] : []
-        content {
-          captcha {}
-        }
-      }
-
-      statement {
-        dynamic "byte_match_statement" {
-          for_each = try([rule.value.statement.byte_match_statement], [])
-
-          content {
-            search_string = byte_match_statement.value.search_string
-
-            field_to_match {
-              dynamic "uri_path" {
-                for_each = try([byte_match_statement.value.field_to_match.uri_path], [])
-                content {}
-              }
-
-              dynamic "query_string" {
-                for_each = try([byte_match_statement.value.field_to_match.query_string], [])
-                content {}
-              }
-
-              dynamic "single_header" {
-                for_each = try([byte_match_statement.value.field_to_match.single_header], [])
-                content {
-                  name = single_header.value.name
-                }
-              }
-
-              dynamic "body" {
-                for_each = try([byte_match_statement.value.field_to_match.body], [])
-                content {}
-              }
-            }
-
-            positional_constraint = byte_match_statement.value.positional_constraint
-
-            dynamic "text_transformation" {
-              for_each = byte_match_statement.value.text_transformations
-
-              content {
-                priority = text_transformation.value.priority
-                type     = text_transformation.value.type
-              }
-            }
-          }
-        }
-      }
-
-      visibility_config {
-        cloudwatch_metrics_enabled = var.enable_cloudwatch_metrics
-        sampled_requests_enabled   = var.enable_sampled_requests
-        metric_name                = rule.value.name
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesCommonRuleSet"
       }
     }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${local.waf_name}-core-rules"
+      sampled_requests_enabled   = true
+    }
   }
+
+  # ------------------------------------------------------------------------------
+  # Rule 4: AWS Managed - Known Bad Inputs - Priority 30
+  # ------------------------------------------------------------------------------
+
+  rule {
+    name     = "AWSManagedRulesKnownBadInputsRuleSet"
+    priority = 30
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesKnownBadInputsRuleSet"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${local.waf_name}-bad-inputs"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # ------------------------------------------------------------------------------
+  # Rule 5: AWS Managed - SQL Injection - Priority 40
+  # ------------------------------------------------------------------------------
+
+  rule {
+    name     = "AWSManagedRulesSQLiRuleSet"
+    priority = 40
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesSQLiRuleSet"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${local.waf_name}-sqli"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # ------------------------------------------------------------------------------
+  # Rule 6: AWS Managed - IP Reputation - Priority 71
+  # ------------------------------------------------------------------------------
+
+  rule {
+    name     = "AWSManagedRulesAmazonIpReputationList"
+    priority = 71
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesAmazonIpReputationList"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${local.waf_name}-ip-reputation"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # ------------------------------------------------------------------------------
+  # Global Visibility Configuration
+  # ------------------------------------------------------------------------------
 
   visibility_config {
-    cloudwatch_metrics_enabled = var.enable_cloudwatch_metrics
-    sampled_requests_enabled   = var.enable_sampled_requests
-    metric_name                = local.waf_name
+    cloudwatch_metrics_enabled = true
+    metric_name                = "${local.waf_name}-global"
+    sampled_requests_enabled   = true
   }
 
   tags = local.merged_tags
-
-  lifecycle {
-    create_before_destroy = true
-
-    precondition {
-      condition     = var.scope == "CLOUDFRONT" ? var.region == "us-east-1" : true
-      error_message = "CloudFront WAF Web ACLs must be created in us-east-1 region."
-    }
-  }
 }
 
-# ========================================
-# CloudWatch Log Group (for WAF Logging)
-# ========================================
+# ==============================================================================
+# WAF Logging Configuration (ALWAYS ENABLED)
+# ==============================================================================
 
-resource "aws_cloudwatch_log_group" "waf" {
-  count = var.create && local.should_create_log_group ? 1 : 0
+resource "aws_wafv2_web_acl_logging_configuration" "this" {
+  resource_arn            = aws_wafv2_web_acl.this.arn
+  log_destination_configs = [var.firehose_delivery_stream_arn]
 
-  name              = local.log_group_name
-  retention_in_days = var.cloudwatch_log_retention_days
-
-  tags = merge(
-    local.merged_tags,
-    {
-      Name = local.log_group_name
-      Type = "waf-logs"
-    }
-  )
-}
-
-# ========================================
-# WAF Logging Configuration
-# ========================================
-
-resource "aws_wafv2_web_acl_logging_configuration" "main" {
-  count = var.create && var.enable_logging && length(local.log_destination_configs) > 0 ? 1 : 0
-
-  resource_arn            = aws_wafv2_web_acl.main[0].arn
-  log_destination_configs = local.log_destination_configs
-
-  # Redact sensitive fields
+  # Redact sensitive headers from logs
   redacted_fields {
     single_header {
       name = "authorization"
@@ -387,20 +312,7 @@ resource "aws_wafv2_web_acl_logging_configuration" "main" {
     }
   }
 
-  depends_on = [aws_cloudwatch_log_group.waf]
-}
-
-# ========================================
-# ALB Association (Optional)
-# ========================================
-
-resource "aws_wafv2_web_acl_association" "alb" {
-  count = var.create && local.has_alb_association ? 1 : 0
-
-  resource_arn = var.alb_arn
-  web_acl_arn  = aws_wafv2_web_acl.main[0].arn
-
-  lifecycle {
-    create_before_destroy = true
-  }
+  depends_on = [
+    aws_cloudwatch_log_group.waf
+  ]
 }

@@ -1,26 +1,24 @@
 # ==============================================================================
 # SSM Parameter Module - Local Values
 # ==============================================================================
-# This file defines local values for computed resource attributes.
-# ==============================================================================
 
 locals {
   # ------------------------------------------------------------------------------
   # Parameter Path Generation
   # ------------------------------------------------------------------------------
 
-  # Automatic hierarchical path: /ENV/resource-type/resource-id/parameter-name
-  # Example: /production/database/forge-production-db/host
-  automatic_path = join("/", compact([
+  # Automatic hierarchical path using common_prefix
+  # Pattern: /common-prefix/resource-type/parameter-name
+  # Example: /forge-prod-acme-webapp/database/host
+  automatic_path = var.custom_path != null ? var.custom_path : join("/", compact([
     "",
-    var.environment,
+    replace(var.common_prefix, "-", "/"),
     var.resource_type,
-    var.resource_id,
     var.parameter_name
   ]))
 
   # Use custom path if provided, otherwise use automatic hierarchical path
-  parameter_full_path = var.custom_path != null ? var.custom_path : local.automatic_path
+  parameter_full_path = local.automatic_path
 
   # ------------------------------------------------------------------------------
   # Parameter Naming
@@ -30,40 +28,31 @@ locals {
   parameter_display_name = basename(local.parameter_full_path)
 
   # ------------------------------------------------------------------------------
-  # Tagging Strategy
+  # Tagging Strategy (Pattern A)
   # ------------------------------------------------------------------------------
 
-  # Detect multi-tenant context
-  has_customer = var.customer_name != null && var.customer_name != ""
-  has_project  = var.project_name != null && var.project_name != ""
-
-  # Base tags applied to all resources
-  base_tags = {
-    Environment     = var.environment
-    ManagedBy       = "terraform"
-    TerraformModule = "configuration/ssm-parameter"
-    Region          = var.region
+  # Module-specific tags (only SSM metadata)
+  module_tags = {
+    TerraformModule = "forge/aws/security/ssm-parameter"
     ParameterType   = var.parameter_type
     ParameterTier   = var.parameter_tier
     ResourceType    = var.resource_type
+    ParameterName   = var.parameter_name
   }
 
-  # Customer-specific tags
-  customer_tags = local.has_customer ? {
-    CustomerName = var.customer_name
-    PlanTier     = var.plan_tier
-  } : {}
-
-  # Project-specific tags
-  project_tags = local.has_project ? {
-    ProjectName = var.project_name
-  } : {}
-
-  # Merge all tags
+  # Merge common_tags from root + module-specific tags
   merged_tags = merge(
-    local.base_tags,
-    local.customer_tags,
-    local.project_tags,
-    var.tags
+    var.common_tags,
+    local.module_tags
   )
+
+  # ------------------------------------------------------------------------------
+  # KMS Encryption Validation
+  # ------------------------------------------------------------------------------
+
+  # SecureString requires KMS key
+  requires_kms = var.parameter_type == "SecureString"
+  has_kms_key  = var.kms_key_id != null
+
+  kms_validation_passed = !local.requires_kms || local.has_kms_key
 }

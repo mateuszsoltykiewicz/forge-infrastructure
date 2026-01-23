@@ -4,22 +4,22 @@
 
 output "certificate_arn" {
   description = "ARN of the ACM certificate. Use this with ALB, CloudFront, API Gateway, etc."
-  value       = var.create ? aws_acm_certificate.main[0].arn : null
+  value       = aws_acm_certificate.main.arn
 }
 
 output "certificate_id" {
   description = "ID of the ACM certificate (same as ARN)"
-  value       = var.create ? aws_acm_certificate.main[0].id : null
+  value       = aws_acm_certificate.main.id
 }
 
 output "certificate_domain_name" {
   description = "Primary domain name of the certificate"
-  value       = var.create ? aws_acm_certificate.main[0].domain_name : null
+  value       = aws_acm_certificate.main.domain_name
 }
 
 output "certificate_status" {
   description = "Status of the certificate (PENDING_VALIDATION, ISSUED, INACTIVE, EXPIRED, VALIDATION_TIMED_OUT, REVOKED, FAILED)"
-  value       = var.create ? aws_acm_certificate.main[0].status : null
+  value       = aws_acm_certificate.main.status
 }
 
 # ========================================
@@ -62,25 +62,20 @@ output "validation_method" {
 
 output "validation_record_fqdns" {
   description = "FQDNs of the Route 53 validation records created (DNS validation only)"
-  value       = var.create && local.should_create_dns_records ? [for record in aws_route53_record.validation : record.fqdn] : []
+  value       = [for record in aws_route53_record.validation : record.fqdn]
 }
 
 output "domain_validation_options" {
   description = "Domain validation options for manual DNS configuration (if not using automatic Route 53 validation)"
-  value = var.create ? [
-    for dvo in aws_acm_certificate.main[0].domain_validation_options : {
+  value = [
+    for dvo in aws_acm_certificate.main.domain_validation_options : {
       domain_name           = dvo.domain_name
       resource_record_name  = dvo.resource_record_name
       resource_record_type  = dvo.resource_record_type
       resource_record_value = dvo.resource_record_value
     }
-  ] : []
+  ]
   sensitive = false
-}
-
-output "is_validated" {
-  description = "Whether the certificate has been validated (true if wait_for_validation is enabled and validation completed)"
-  value       = var.create && var.wait_for_validation && local.is_dns_validation && local.should_create_dns_records ? true : null
 }
 
 # ========================================
@@ -127,17 +122,17 @@ output "validation_records_created" {
 
 output "expiration_alarm_arn" {
   description = "ARN of the CloudWatch alarm for certificate expiration (production only)"
-  value       = var.create && var.environment == "production" ? try(aws_cloudwatch_metric_alarm.certificate_expiration[0].arn, null) : null
+  value       = var.environment == "production" ? try(aws_cloudwatch_metric_alarm.certificate_expiration[0].arn, null) : null
 }
 
 output "not_before" {
   description = "Certificate validity start time"
-  value       = var.create ? aws_acm_certificate.main[0].not_before : null
+  value       = aws_acm_certificate.main.not_before
 }
 
 output "not_after" {
   description = "Certificate validity end time (expiration)"
-  value       = var.create ? aws_acm_certificate.main[0].not_after : null
+  value       = aws_acm_certificate.main.not_after
 }
 
 # ========================================
@@ -146,28 +141,28 @@ output "not_after" {
 
 output "alb_listener_config" {
   description = "Configuration object for ALB HTTPS listener"
-  value = var.create ? {
-    certificate_arn = aws_acm_certificate.main[0].arn
+  value = {
+    certificate_arn = aws_acm_certificate.main.arn
     ssl_policy      = "ELBSecurityPolicy-TLS13-1-2-2021-06" # Recommended for ALB
     alpn_policy     = "HTTP2Preferred"
-  } : null
+  }
 }
 
 output "cloudfront_config" {
   description = "Configuration object for CloudFront (requires certificate in us-east-1)"
-  value = var.create ? {
-    acm_certificate_arn      = aws_acm_certificate.main[0].arn
+  value = {
+    acm_certificate_arn      = aws_acm_certificate.main.arn
     ssl_support_method       = "sni-only"
     minimum_protocol_version = "TLSv1.2_2021"
-  } : null
+  }
 }
 
 output "api_gateway_config" {
   description = "Configuration object for API Gateway custom domain"
-  value = var.create ? {
-    certificate_arn = aws_acm_certificate.main[0].arn
+  value = {
+    certificate_arn = aws_acm_certificate.main.arn
     security_policy = "TLS_1_2"
-  } : null
+  }
 }
 
 # ========================================
@@ -176,12 +171,12 @@ output "api_gateway_config" {
 
 output "certificate_summary" {
   description = "Summary of the certificate configuration"
-  value = var.create ? {
+  value = {
     # Identification
-    certificate_arn = aws_acm_certificate.main[0].arn
-    certificate_id  = aws_acm_certificate.main[0].id
+    certificate_arn = aws_acm_certificate.main.arn
+    certificate_id  = aws_acm_certificate.main.id
     name            = local.certificate_name
-    status          = aws_acm_certificate.main[0].status
+    status          = aws_acm_certificate.main.status
 
     # Domains
     domain_name               = var.domain_name
@@ -199,10 +194,10 @@ output "certificate_summary" {
     certificate_transparency_logging = var.certificate_transparency_logging
 
     # Validity
-    not_before = aws_acm_certificate.main[0].not_before
-    not_after  = aws_acm_certificate.main[0].not_after
+    not_before = aws_acm_certificate.main.not_before
+    not_after  = aws_acm_certificate.main.not_after
 
     # Tags
     tags = local.merged_tags
-  } : null
+  }
 }

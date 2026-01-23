@@ -9,25 +9,38 @@
 # ------------------------------------------------------------------------------
 
 resource "aws_ssm_parameter" "this" {
-  count = var.create ? 1 : 0
 
-  name            = local.parameter_full_path
-  description     = var.parameter_description != "" ? var.parameter_description : "Parameter ${local.parameter_display_name} for ${var.resource_type}"
-  type            = var.parameter_type
-  tier            = var.parameter_tier
-  value           = var.parameter_value
-  key_id          = var.parameter_type == "SecureString" ? var.kms_key_id : null
-  data_type       = var.data_type
+  name        = local.parameter_full_path
+  description = var.description
+  type        = var.parameter_type
+  value       = var.parameter_value
+  tier        = var.parameter_tier
+
+  # KMS encryption (required for SecureString)
+  key_id = var.parameter_type == "SecureString" ? var.kms_key_id : null
+
+  # Data type
+  data_type = var.data_type
+
+  # Allowed pattern validation
   allowed_pattern = var.allowed_pattern
-  overwrite       = var.overwrite
 
-  tags = local.merged_tags
+  # Overwrite behavior
+  overwrite = var.overwrite
+
+  tags = local.merged_tags # <-- Pattern A tagging
 
   lifecycle {
-    # Prevent accidental deletion of parameters
-    prevent_destroy = false
+    # Prevent accidental deletion of critical parameters
+    prevent_destroy = var.prevent_destroy
 
     # Ignore changes to value if managed externally
-    ignore_changes = []
+    ignore_changes = var.ignore_value_changes ? [value] : []
+
+    # Validation: SecureString requires KMS key
+    precondition {
+      condition     = local.kms_validation_passed
+      error_message = "SecureString parameter type requires kms_key_id to be specified"
+    }
   }
 }

@@ -1,43 +1,20 @@
-# ========================================
-# Resource Creation Control
-# ========================================
+# ==============================================================================
+# Common Configuration
+# ==============================================================================
 
-variable "create" {
-  description = "Whether to create the ACM certificate and related resources. Set to false to skip resource creation."
-  type        = bool
-  default     = true
-}
-
-# ========================================
-# Customer Context Variables
-# ========================================
-
-variable "customer_name" {
-  description = "Human-readable name of the customer"
+variable "common_prefix" {
+  description = "Common prefix for certificate naming (e.g., forge-production-customer-project)"
   type        = string
 
   validation {
-    condition     = length(var.customer_name) > 0 && length(var.customer_name) <= 100
-    error_message = "Customer name must be between 1 and 100 characters."
+    condition     = length(var.common_prefix) > 0 && length(var.common_prefix) <= 63
+    error_message = "common_prefix must be between 1 and 63 characters"
   }
 }
 
-variable "project_name" {
-  description = "Project name for multi-tenant deployments"
-  type        = string
-  default     = null
-}
-
-variable "plan_tier" {
-  description = "Service plan tier (e.g., 'basic', 'pro', 'enterprise')"
-  type        = string
-  default     = "basic"
-
-  validation {
-    condition     = contains(["basic", "pro", "enterprise", "custom"], var.plan_tier)
-    error_message = "Plan tier must be one of: basic, pro, enterprise, custom."
-  }
-}
+# ========================================
+# General Configuration
+# ========================================
 
 variable "environment" {
   description = "Environment name (e.g., 'dev', 'staging', 'production')"
@@ -187,7 +164,7 @@ variable "early_renewal_duration" {
 # Tags
 # ========================================
 
-variable "tags" {
+variable "common_tags" {
   description = "Additional tags to apply to the certificate and validation records"
   type        = map(string)
   default     = {}
