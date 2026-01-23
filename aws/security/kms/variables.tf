@@ -4,54 +4,24 @@
 # This file defines input variables for the KMS key module.
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# Customer Context Variables
-# ------------------------------------------------------------------------------
+# ==============================================================================
+# Common Configuration (Pattern A)
+# ==============================================================================
 
-variable "create" {
-  description = "Whether to create the KMS key and alias. Set to false to skip resource creation."
-  type        = bool
-  default     = true
-}
-
-variable "customer_name" {
-  description = "Name of the customer (used in resource naming, e.g., 'forge', 'acme-corp')"
+variable "common_prefix" {
+  description = "Common prefix for KMS key alias naming (e.g., forge-production-customer-project)"
   type        = string
 
   validation {
-    condition     = can(regex("^[a-z0-9-]+$", var.customer_name))
-    error_message = "customer_name must contain only lowercase letters, numbers, and hyphens"
+    condition     = length(var.common_prefix) > 0 && length(var.common_prefix) <= 63
+    error_message = "common_prefix must be between 1 and 63 characters (AWS KMS alias limit)"
   }
 }
 
-variable "project_name" {
-  description = "Project name for multi-tenant deployments"
-  type        = string
-  default     = null
-}
-
-variable "plan_tier" {
-  description = "Customer plan tier: basic, pro, enterprise, or platform"
-  type        = string
-
-  validation {
-    condition     = contains(["basic", "pro", "enterprise", "platform"], var.plan_tier)
-    error_message = "plan_tier must be one of: basic, pro, enterprise, platform"
-  }
-}
-
-# ------------------------------------------------------------------------------
-# Environment Variables
-# ------------------------------------------------------------------------------
-
-variable "environment" {
-  description = "Environment name (e.g., production, staging, development)"
-  type        = string
-}
-
-variable "region" {
-  description = "AWS region for resource deployment"
-  type        = string
+variable "common_tags" {
+  description = "Common tags to apply to all resources (passed from root module)"
+  type        = map(string)
+  default     = {}
 }
 
 # ------------------------------------------------------------------------------
@@ -177,25 +147,10 @@ variable "custom_key_policy" {
   default     = null
 }
 
-# ------------------------------------------------------------------------------
-# Alias Configuration
-# ------------------------------------------------------------------------------
-
-variable "create_alias" {
-  description = "Create an alias for the key"
-  type        = bool
-  default     = true
-}
-
-variable "alias_name" {
-  description = "Alias name for the key (without 'alias/' prefix, leave empty for auto-generated name)"
-  type        = string
-  default     = ""
-
-  validation {
-    condition     = var.alias_name == "" || can(regex("^[a-zA-Z0-9/_-]+$", var.alias_name))
-    error_message = "alias_name must contain only alphanumeric characters, underscores, hyphens, and forward slashes"
-  }
+variable "key_service_roles" {
+  description = "List of IAM role ARNs for AWS services that can use the key"
+  type        = list(string)
+  default     = []
 }
 
 # ------------------------------------------------------------------------------
@@ -216,14 +171,4 @@ variable "grants" {
     grant_creation_tokens = optional(list(string))
   }))
   default = []
-}
-
-# ------------------------------------------------------------------------------
-# Tags
-# ------------------------------------------------------------------------------
-
-variable "tags" {
-  description = "Additional tags to apply to resources"
-  type        = map(string)
-  default     = {}
 }

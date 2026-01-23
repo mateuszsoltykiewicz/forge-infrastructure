@@ -9,7 +9,6 @@
 # ------------------------------------------------------------------------------
 
 resource "aws_kms_key" "main" {
-  count = var.create ? 1 : 0
 
   description              = var.key_description
   key_usage                = var.key_usage
@@ -35,12 +34,7 @@ resource "aws_kms_key" "main" {
 
   policy = local.default_key_policy
 
-  tags = merge(
-    local.merged_tags,
-    {
-      Name = local.alias_name
-    }
-  )
+  tags = local.merged_tags
 }
 
 # ------------------------------------------------------------------------------
@@ -48,10 +42,9 @@ resource "aws_kms_key" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_kms_alias" "main" {
-  count = var.create && var.create_alias ? 1 : 0
 
   name          = "alias/${local.alias_name}"
-  target_key_id = aws_kms_key.main[0].key_id
+  target_key_id = aws_kms_key.main.key_id
 }
 
 # ------------------------------------------------------------------------------
@@ -59,10 +52,10 @@ resource "aws_kms_alias" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_kms_grant" "main" {
-  for_each = var.create ? { for grant in var.grants : grant.name => grant } : {}
+  for_each = { for idx, grant in var.grants : grant.name => grant }
 
   name              = each.value.name
-  key_id            = aws_kms_key.main[0].key_id
+  key_id            = aws_kms_key.main.key_id
   grantee_principal = each.value.grantee_principal
   operations        = each.value.operations
 

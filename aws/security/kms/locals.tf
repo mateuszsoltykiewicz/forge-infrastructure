@@ -1,28 +1,40 @@
 # ==============================================================================
 # KMS Module - Local Variables
 # ==============================================================================
-# This file defines local variables for resource naming and key policy.
-# ==============================================================================
 
 locals {
   # ------------------------------------------------------------------------------
-  # Alias Naming
+  # Alias Naming (Pattern A)
   # ------------------------------------------------------------------------------
 
-  # Determine naming context
-  has_customer = var.customer_name != null && var.customer_name != ""
-  has_project  = var.project_name != null && var.project_name != ""
+  # Generate alias name from common_prefix + key purpose
+  generated_alias_name = "kms-${var.key_purpose}-${var.common_prefix}"
 
-  # Generate alias name based on customer context if not provided
-  # 1. Shared: forge-{environment}-{purpose}
-  # 2. Customer-dedicated: forge-{environment}-{customer}-{purpose}
-  # 3. Project-isolated: forge-{environment}-{customer}-{project}-{purpose}
-  generated_alias_name = local.has_project ? "forge-${var.environment}-${var.customer_name}-${var.project_name}-${var.key_purpose}" : (
-    local.has_customer ? "forge-${var.environment}-${var.customer_name}-${var.key_purpose}" :
-    "forge-${var.environment}-${var.key_purpose}"
+  # sanitize from generated_alias_name to be path like (lowercase, no spaces, max 63 chars)
+  alias_name_sanitized_step1  = lower(replace(replace(local.generated_alias_name, "/[^a-z0-9._\\-\\/+=@ ]/", "-"), "/--+/", "-"))
+  alias_name_sanitized        = substr(local.alias_name_sanitized_step1, 0, 63)
+  
+  # Final alias name
+  alias_name                  = local.alias_name_sanitized
+
+  # ------------------------------------------------------------------------------
+  # Tagging Strategy (Pattern A)
+  # ------------------------------------------------------------------------------
+
+  # Module-specific tags (only KMS metadata)
+  module_tags = {
+    TerraformModule = "forge/aws/security/kms"
+    KeyPurpose      = var.key_purpose
+    KeyUsage        = var.key_usage
+    MultiRegion     = tostring(var.multi_region)
+    KeySpec         = var.customer_master_key_spec
+  }
+
+  # Merge common_tags from root + module-specific tags
+  merged_tags = merge(
+    var.common_tags,
+    local.module_tags
   )
-
-  alias_name = var.alias_name != "" ? var.alias_name : local.generated_alias_name
 
   # ------------------------------------------------------------------------------
   # Key Policy Construction
@@ -31,155 +43,111 @@ locals {
   # Get current AWS account ID
   account_id = data.aws_caller_identity.current.account_id
 
+  # ------------------------------------------------------------------------------
+  # Policy Statements (separated for type consistency)
+  # ------------------------------------------------------------------------------
+
+  root_policy_statements = var.enable_default_policy ? [{
+    Sid    = "Enable IAM User Permissions"
+    Effect = "Allow"
+    Principal = {
+      AWS = "arn:aws:iam::${local.account_id}:root"
+    }
+    Action   = "kms:*"
+    Resource = "*"
+  }] : []
+
+  admin_policy_statements = length(var.key_administrators) > 0 ? [{
+    Sid    = "Allow access for Key Administrators"
+    Effect = "Allow"
+    Principal = {
+      AWS = var.key_administrators
+    }
+    Action = [
+      "kms:Create*",
+      "kms:Describe*",
+      "kms:Enable*",
+      "kms:List*",
+      "kms:Put*",
+      "kms:Update*",
+      "kms:Revoke*",
+      "kms:Disable*",
+      "kms:Get*",
+      "kms:Delete*",
+      "kms:TagResource",
+      "kms:UntagResource",
+      "kms:ScheduleKeyDeletion",
+      "kms:CancelKeyDeletion"
+    ]
+    Resource = "*"
+  }] : []
+
+  # User statements split into two separate locals
+  user_use_statements = length(var.key_users) > 0 ? [{
+    Sid    = "Allow use of the key"
+    Effect = "Allow"
+    Principal = {
+      AWS = var.key_users
+    }
+    Action = [
+      "kms:Encrypt",
+      "kms:Decrypt",
+      "kms:ReEncrypt*",
+      "kms:GenerateDataKey*",
+      "kms:DescribeKey"
+    ]
+    Resource = "*"
+  }] : []
+
+  user_grant_statements = length(var.key_users) > 0 ? [{
+    Sid    = "Allow attachment of persistent resources"
+    Effect = "Allow"
+    Principal = {
+      AWS = var.key_users
+    }
+    Action = [
+      "kms:CreateGrant",
+      "kms:ListGrants",
+      "kms:RevokeGrant"
+    ]
+    Resource = "*"
+    Condition = {
+      Bool = {
+        "kms:GrantIsForAWSResource" = "true"
+      }
+    }
+  }] : []
+
+  service_policy_statements = length(var.key_service_roles) > 0 ? [{
+    Sid    = "Allow AWS Services to use the key"
+    Effect = "Allow"
+    Principal = {
+      Service = var.key_service_roles
+    }
+    Action = [
+      "kms:Decrypt",
+      "kms:Encrypt",
+      "kms:ReEncrypt*",
+      "kms:GenerateDataKey*",
+      "kms:DescribeKey",
+      "kms:CreateGrant"
+    ]
+    Resource = "*"
+  }] : []
+
   # Build key policy from variables (if custom policy not provided)
   default_key_policy = var.custom_key_policy == null ? jsonencode({
     Version = "2012-10-17"
     Id      = "key-policy-${local.alias_name}"
     Statement = concat(
-      # Root account access (if default policy enabled)
-      var.enable_default_policy ? [
-        {
-          Sid    = "Enable IAM User Permissions"
-          Effect = "Allow"
-          Principal = {
-            AWS = "arn:aws:iam::${local.account_id}:root"
-          }
-          Action   = "kms:*"
-          Resource = "*"
-        }
-      ] : [],
-
-      # Key administrators
-      length(var.key_administrators) > 0 ? [
-        {
-          Sid    = "Allow access for Key Administrators"
-          Effect = "Allow"
-          Principal = {
-            AWS = var.key_administrators
-          }
-          Action = [
-            "kms:Create*",
-            "kms:Describe*",
-            "kms:Enable*",
-            "kms:List*",
-            "kms:Put*",
-            "kms:Update*",
-            "kms:Revoke*",
-            "kms:Disable*",
-            "kms:Get*",
-            "kms:Delete*",
-            "kms:TagResource",
-            "kms:UntagResource",
-            "kms:ScheduleKeyDeletion",
-            "kms:CancelKeyDeletion"
-          ]
-          Resource = "*"
-        }
-      ] : [],
-
-      # Key users (cryptographic operations)
-      length(var.key_users) > 0 ? [
-        {
-          Sid    = "Allow use of the key"
-          Effect = "Allow"
-          Principal = {
-            AWS = var.key_users
-          }
-          Action = [
-            "kms:Encrypt",
-            "kms:Decrypt",
-            "kms:ReEncrypt*",
-            "kms:GenerateDataKey*",
-            "kms:DescribeKey"
-          ]
-          Resource = "*"
-        },
-        {
-          Sid    = "Allow attachment of persistent resources"
-          Effect = "Allow"
-          Principal = {
-            AWS = var.key_users
-          }
-          Action = [
-            "kms:CreateGrant",
-            "kms:ListGrants",
-            "kms:RevokeGrant"
-          ]
-          Resource = "*"
-          Condition = {
-            Bool = {
-              "kms:GrantIsForAWSResource" = "true"
-            }
-          }
-        }
-      ] : [],
-
-      # AWS Service principals
-      length(var.key_service_users) > 0 ? [
-        {
-          Sid    = "Allow AWS services to use the key"
-          Effect = "Allow"
-          Principal = {
-            Service = var.key_service_users
-          }
-          Action = [
-            "kms:Encrypt",
-            "kms:Decrypt",
-            "kms:ReEncrypt*",
-            "kms:GenerateDataKey*",
-            "kms:CreateGrant",
-            "kms:DescribeKey"
-          ]
-          Resource = "*"
-          Condition = {
-            StringEquals = {
-              "kms:ViaService" = [
-                for service in var.key_service_users :
-                "${service}.${var.region}.amazonaws.com"
-              ]
-            }
-          }
-        }
-      ] : []
+      local.root_policy_statements,
+      local.admin_policy_statements,
+      local.user_use_statements,
+      local.user_grant_statements,
+      local.service_policy_statements
     )
   }) : var.custom_key_policy
 
-  # ------------------------------------------------------------------------------
-  # Resource Tagging
-  # ------------------------------------------------------------------------------
-
-  # Base tags applied to all resources
-  base_tags = {
-    Environment     = var.environment
-    ManagedBy       = "Terraform"
-    TerraformModule = "forge/security/kms"
-    Region          = var.region
-    KeyPurpose      = var.key_purpose
-    KeyUsage        = var.key_usage
-    MultiRegion     = var.multi_region ? "true" : "false"
-  }
-
-  # Customer-specific tags
-  customer_tags = local.has_customer ? {
-    CustomerName = var.customer_name
-  } : {}
-
-  # Project-specific tags
-  project_tags = local.has_project ? {
-    ProjectName = var.project_name
-  } : {}
-
-  # Merge all tags
-  merged_tags = merge(
-    local.base_tags,
-    local.customer_tags,
-    local.project_tags,
-    var.tags
-  )
+  # Final key policy
+  key_policy = local.default_key_policy
 }
-
-# ------------------------------------------------------------------------------
-# Data Sources
-# ------------------------------------------------------------------------------
-
-data "aws_caller_identity" "current" {}
