@@ -1,0 +1,249 @@
+version: "1.0"
+timeout_seconds: 7200  # 2 hours - wait for full infrastructure (EKS ~20min, RDS ~15min, VPC-E ~30min)
+polling_interval_seconds: 15  # Check every 15s to reduce API calls
+circuit_breaker_threshold: 10  # Increased threshold for long-running operations
+
+chains:
+  # ==============================================================================
+  # ALB → EKS Nodes (Ingress Traffic)
+  # ==============================================================================
+  # Each ALB environment (production, staging, development) can reach EKS worker nodes
+  
+  - name: alb-production-to-eks-nodes
+    master_tier: ALB
+    master_purpose_filter: production
+    slave_tier: EKSNodes
+    slave_purpose_filter: worker-nodes
+    ports: [80, 443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: alb-staging-to-eks-nodes
+    master_tier: ALB
+    master_purpose_filter: staging
+    slave_tier: EKSNodes
+    slave_purpose_filter: worker-nodes
+    ports: [80, 443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: alb-development-to-eks-nodes
+    master_tier: ALB
+    master_purpose_filter: development
+    slave_tier: EKSNodes
+    slave_purpose_filter: worker-nodes
+    ports: [80, 443]
+    protocol: tcp
+    bidirectional: false
+
+  # ==============================================================================
+  # EKS Cluster ↔ EKS Nodes (Kubernetes API Communication)
+  # ==============================================================================
+  
+  - name: eks-cluster-to-nodes
+    master_tier: EKSCluster
+    master_purpose_filter: control-plane
+    slave_tier: EKSNodes
+    slave_purpose_filter: worker-nodes
+    ports: [443, 10250]
+    protocol: tcp
+    bidirectional: true
+
+  # ==============================================================================
+  # EKS Nodes → Data Layer (Database & Cache Access)
+  # ==============================================================================
+  
+  - name: eks-nodes-to-rds-postgresql
+    master_tier: EKSNodes
+    master_purpose_filter: worker-nodes
+    slave_tier: RDS
+    slave_purpose_filter: rds-postgresql
+    ports: [5432]
+    protocol: tcp
+    bidirectional: false
+
+  - name: eks-nodes-to-redis-cache
+    master_tier: EKSNodes
+    master_purpose_filter: worker-nodes
+    slave_tier: Redis
+    slave_purpose_filter: redis-cache
+    ports: [6379]
+    protocol: tcp
+    bidirectional: false
+
+  # ==============================================================================
+  # EKS Nodes → VPC Endpoints (AWS Services - Granular Access)
+  # ==============================================================================
+  # Each VPC Endpoint is individually identified by purpose for Principle of Least Privilege
+  
+  - name: eks-nodes-to-vpc-endpoint-logs
+    master_tier: EKSNodes
+    master_purpose_filter: worker-nodes
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: logs
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: eks-nodes-to-vpc-endpoint-monitoring
+    master_tier: EKSNodes
+    master_purpose_filter: worker-nodes
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: monitoring
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: eks-nodes-to-vpc-endpoint-kms
+    master_tier: EKSNodes
+    master_purpose_filter: worker-nodes
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: kms
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: eks-nodes-to-vpc-endpoint-lambda
+    master_tier: EKSNodes
+    master_purpose_filter: worker-nodes
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: lambda
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: eks-nodes-to-vpc-endpoint-kinesis-streams
+    master_tier: EKSNodes
+    master_purpose_filter: worker-nodes
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: kinesis-streams
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: eks-nodes-to-vpc-endpoint-kinesis-firehose
+    master_tier: EKSNodes
+    master_purpose_filter: worker-nodes
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: kinesis-firehose
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: eks-nodes-to-vpc-endpoint-ecr-api
+    master_tier: EKSNodes
+    master_purpose_filter: worker-nodes
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: ecr-api
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: eks-nodes-to-vpc-endpoint-ecr-dkr
+    master_tier: EKSNodes
+    master_purpose_filter: worker-nodes
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: ecr-dkr
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: eks-nodes-to-vpc-endpoint-ec2
+    master_tier: EKSNodes
+    master_purpose_filter: worker-nodes
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: ec2
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: eks-nodes-to-vpc-endpoint-sts
+    master_tier: EKSNodes
+    master_purpose_filter: worker-nodes
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: sts
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: eks-nodes-to-vpc-endpoint-ssm
+    master_tier: EKSNodes
+    master_purpose_filter: worker-nodes
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: ssm
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: eks-nodes-to-vpc-endpoint-autoscaling
+    master_tier: EKSNodes
+    master_purpose_filter: worker-nodes
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: autoscaling
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: eks-nodes-to-vpc-endpoint-elasticloadbalancing
+    master_tier: EKSNodes
+    master_purpose_filter: worker-nodes
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: elasticloadbalancing
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: eks-nodes-to-vpc-endpoint-eks
+    master_tier: EKSNodes
+    master_purpose_filter: worker-nodes
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: eks
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  # ==============================================================================
+  # RDS PostgreSQL → VPC Endpoints (Observability)
+  # ==============================================================================
+  # RDS needs CloudWatch Logs and KMS for enhanced monitoring and encryption
+  
+  - name: rds-postgresql-to-vpc-endpoint-logs
+    master_tier: RDS
+    master_purpose_filter: rds-postgresql
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: logs
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: rds-postgresql-to-vpc-endpoint-kms
+    master_tier: RDS
+    master_purpose_filter: rds-postgresql
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: kms
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  # ==============================================================================
+  # Redis → VPC Endpoints (Observability)
+  # ==============================================================================
+  # Redis needs CloudWatch Logs for slow-log and engine-log streams
+  
+  - name: redis-cache-to-vpc-endpoint-logs
+    master_tier: Redis
+    master_purpose_filter: redis-cache
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: logs
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  - name: redis-cache-to-vpc-endpoint-kms
+    master_tier: Redis
+    master_purpose_filter: redis-cache
+    slave_tier: VPCEndpoints
+    slave_purpose_filter: kms
+    ports: [443]
+    protocol: tcp
+    bidirectional: false

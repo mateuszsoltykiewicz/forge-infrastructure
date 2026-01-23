@@ -1,0 +1,69 @@
+version: "1.0"
+timeout_seconds: 7200  # 2 hours - wait for full infrastructure (EKS ~20min, RDS ~15min, VPC-E ~30min)
+polling_interval_seconds: 15  # Check every 15s to reduce API calls
+circuit_breaker_threshold: 10  # Increased threshold for long-running operations
+
+chains:
+  # ALB → EKS Nodes (ingress traffic)
+  - name: alb-to-eks-nodes
+    master_tier: ALB
+    slave_tier: EKSNodes
+    ports: [80, 443]  # HTTP, HTTPS - ALB uses IP target mode (not NodePort)
+    protocol: tcp
+    bidirectional: false  # One-way: ALB can reach EKS, but not vice versa
+
+  # EKS Cluster ↔ EKS Nodes (Kubernetes API communication)
+  - name: eks-cluster-nodes
+    master_tier: EKSCluster
+    slave_tier: EKSNodes
+    ports: [443, 10250]  # API server, kubelet
+    protocol: tcp
+    bidirectional: true
+
+  # EKS Nodes → RDS PostgreSQL (database access)
+  - name: eks-nodes-to-rds
+    master_tier: EKSNodes
+    slave_tier: RDS
+    ports: [5432]
+    protocol: tcp
+    bidirectional: false
+
+  # EKS Nodes → Redis (cache access)
+  - name: eks-nodes-to-redis
+    master_tier: EKSNodes
+    slave_tier: Redis
+    ports: [6379]
+    protocol: tcp
+    bidirectional: false
+
+  # EKS Nodes → VPC Endpoints (AWS services)
+  - name: eks-nodes-to-vpc-endpoints
+    master_tier: EKSNodes
+    slave_tier: VPCEndpoints
+    ports: [443]
+    protocol: tcp
+    bidirectional: false
+
+  # Client VPN → EKS Nodes (VPN access)
+  - name: client-vpn-to-eks
+    master_tier: ClientVPN
+    slave_tier: EKSNodes
+    ports: [22, 443]  # SSH, HTTPS
+    protocol: tcp
+    bidirectional: false
+
+  # Client VPN → RDS (direct database access for admins)
+  - name: client-vpn-to-rds
+    master_tier: ClientVPN
+    slave_tier: RDS
+    ports: [5432]
+    protocol: tcp
+    bidirectional: false
+
+  # Client VPN → Redis (direct cache access for debugging)
+  - name: client-vpn-to-redis
+    master_tier: ClientVPN
+    slave_tier: Redis
+    ports: [6379]
+    protocol: tcp
+    bidirectional: false

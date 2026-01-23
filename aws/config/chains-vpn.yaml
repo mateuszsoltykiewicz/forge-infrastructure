@@ -1,0 +1,30 @@
+version: "1.0"
+timeout_seconds: 7200
+polling_interval_seconds: 15
+circuit_breaker_threshold: 10
+
+# VPN-specific chains (only included when VPN is enabled)
+chains:
+  # Client VPN → EKS Nodes (VPN access)
+  - name: client-vpn-to-eks
+    master_tier: ClientVPN
+    slave_tier: EKSNodes
+    ports: [22, 443]  # SSH, HTTPS
+    protocol: tcp
+    bidirectional: false
+
+  # Client VPN → RDS (direct database access for admins)
+  - name: client-vpn-to-rds
+    master_tier: ClientVPN
+    slave_tier: RDS
+    ports: [5432]
+    protocol: tcp
+    bidirectional: false
+
+  # Client VPN → Redis (direct cache access for debugging)
+  - name: client-vpn-to-redis
+    master_tier: ClientVPN
+    slave_tier: Redis
+    ports: [6379]
+    protocol: tcp
+    bidirectional: false
