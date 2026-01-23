@@ -9,7 +9,9 @@
 # ------------------------------------------------------------------------------
 
 resource "aws_cloudwatch_dashboard" "alb" {
-  dashboard_name = "${local.alb_name}-dashboard"
+  count = length(local.environments)
+
+  dashboard_name = "${local.alb_names[count.index]}-dashboard"
 
   dashboard_body = jsonencode({
     widgets = [
@@ -17,11 +19,11 @@ resource "aws_cloudwatch_dashboard" "alb" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/ApplicationELB", "TargetResponseTime", { stat = "Average", label = "Avg Response Time" }],
-            ["...", { stat = "p99", label = "p99 Response Time" }]
+            ["AWS/ApplicationELB", "TargetResponseTime", { stat : "Average" }],
+            ["...", { stat : "p99" }]
           ]
           period = 300
-          stat   = "Average"
+          region = local.current_region
           title  = "Target Response Time"
           yAxis = {
             left = {
@@ -34,10 +36,11 @@ resource "aws_cloudwatch_dashboard" "alb" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/ApplicationELB", "RequestCount", { stat = "Sum", label = "Total Requests" }]
+            ["AWS/ApplicationELB", "RequestCount"]
           ]
           period = 300
           stat   = "Sum"
+          region = local.current_region
           title  = "Request Count"
         }
       },
@@ -45,11 +48,12 @@ resource "aws_cloudwatch_dashboard" "alb" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/ApplicationELB", "HealthyHostCount", { stat = "Average", label = "Healthy Targets" }],
-            [".", "UnHealthyHostCount", { stat = "Average", label = "Unhealthy Targets" }]
+            ["AWS/ApplicationELB", "HealthyHostCount"],
+            [".", "UnHealthyHostCount"]
           ]
           period = 300
           stat   = "Average"
+          region = local.current_region
           title  = "Target Health"
         }
       },
@@ -57,13 +61,14 @@ resource "aws_cloudwatch_dashboard" "alb" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/ApplicationELB", "HTTPCode_Target_2XX_Count", { stat = "Sum", label = "2XX Responses" }],
-            [".", "HTTPCode_Target_3XX_Count", { stat = "Sum", label = "3XX Responses" }],
-            [".", "HTTPCode_Target_4XX_Count", { stat = "Sum", label = "4XX Responses" }],
-            [".", "HTTPCode_Target_5XX_Count", { stat = "Sum", label = "5XX Responses" }]
+            ["AWS/ApplicationELB", "HTTPCode_Target_2XX_Count"],
+            [".", "HTTPCode_Target_3XX_Count"],
+            [".", "HTTPCode_Target_4XX_Count"],
+            [".", "HTTPCode_Target_5XX_Count"]
           ]
           period = 300
           stat   = "Sum"
+          region = local.current_region
           title  = "Target HTTP Response Codes"
         }
       },
@@ -71,11 +76,12 @@ resource "aws_cloudwatch_dashboard" "alb" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/ApplicationELB", "HTTPCode_ELB_4XX_Count", { stat = "Sum", label = "ELB 4XX" }],
-            [".", "HTTPCode_ELB_5XX_Count", { stat = "Sum", label = "ELB 5XX" }]
+            ["AWS/ApplicationELB", "HTTPCode_ELB_4XX_Count"],
+            [".", "HTTPCode_ELB_5XX_Count"]
           ]
           period = 300
           stat   = "Sum"
+          region = local.current_region
           title  = "ALB HTTP Response Codes"
         }
       },
@@ -83,11 +89,12 @@ resource "aws_cloudwatch_dashboard" "alb" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/ApplicationELB", "ActiveConnectionCount", { stat = "Sum", label = "Active Connections" }],
-            [".", "NewConnectionCount", { stat = "Sum", label = "New Connections" }]
+            ["AWS/ApplicationELB", "ActiveConnectionCount"],
+            [".", "NewConnectionCount"]
           ]
           period = 300
           stat   = "Sum"
+          region = local.current_region
           title  = "Connections"
         }
       },
@@ -95,10 +102,11 @@ resource "aws_cloudwatch_dashboard" "alb" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/ApplicationELB", "ProcessedBytes", { stat = "Sum", label = "Processed Bytes" }]
+            ["AWS/ApplicationELB", "ProcessedBytes"]
           ]
           period = 300
           stat   = "Sum"
+          region = local.current_region
           title  = "Processed Bytes"
         }
       },
@@ -106,11 +114,12 @@ resource "aws_cloudwatch_dashboard" "alb" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/ApplicationELB", "TargetTLSNegotiationErrorCount", { stat = "Sum", label = "TLS Errors" }],
-            [".", "ClientTLSNegotiationErrorCount", { stat = "Sum", label = "Client TLS Errors" }]
+            ["AWS/ApplicationELB", "TargetTLSNegotiationErrorCount"],
+            [".", "ClientTLSNegotiationErrorCount"]
           ]
           period = 300
           stat   = "Sum"
+          region = local.current_region
           title  = "TLS Negotiation Errors"
         }
       }
@@ -124,7 +133,9 @@ resource "aws_cloudwatch_dashboard" "alb" {
 
 # High target 5XX errors
 resource "aws_cloudwatch_metric_alarm" "high_target_5xx" {
-  alarm_name          = "${local.alb_name}-high-target-5xx"
+  count = length(local.environments)
+
+  alarm_name          = "${local.alb_names[count.index]}-high-target-5xx"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "HTTPCode_Target_5XX_Count"
@@ -136,15 +147,22 @@ resource "aws_cloudwatch_metric_alarm" "high_target_5xx" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this[0].arn_suffix
+    LoadBalancer = aws_lb.this[count.index].arn_suffix
   }
 
-  tags = local.all_tags
+  tags = merge(
+    local.merged_tags,
+    {
+      Environment = local.environments[count.index]
+    }
+  )
 }
 
 # High ALB 5XX errors
 resource "aws_cloudwatch_metric_alarm" "high_alb_5xx" {
-  alarm_name          = "${local.alb_name}-high-alb-5xx"
+  count = length(local.environments)
+
+  alarm_name          = "${local.alb_names[count.index]}-high-alb-5xx"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "HTTPCode_ELB_5XX_Count"
@@ -156,15 +174,22 @@ resource "aws_cloudwatch_metric_alarm" "high_alb_5xx" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this[0].arn_suffix
+    LoadBalancer = aws_lb.this[count.index].arn_suffix
   }
 
-  tags = local.all_tags
+  tags = merge(
+    local.merged_tags,
+    {
+      Environment = local.environments[count.index]
+    }
+  )
 }
 
 # High response time
 resource "aws_cloudwatch_metric_alarm" "high_response_time" {
-  alarm_name          = "${local.alb_name}-high-response-time"
+  count = length(local.environments)
+
+  alarm_name          = "${local.alb_names[count.index]}-high-response-time"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "TargetResponseTime"
@@ -176,15 +201,22 @@ resource "aws_cloudwatch_metric_alarm" "high_response_time" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this[0].arn_suffix
+    LoadBalancer = aws_lb.this[count.index].arn_suffix
   }
 
-  tags = local.all_tags
+  tags = merge(
+    local.merged_tags,
+    {
+      Environment = local.environments[count.index]
+    }
+  )
 }
 
 # Unhealthy targets
 resource "aws_cloudwatch_metric_alarm" "unhealthy_targets" {
-  alarm_name          = "${local.alb_name}-unhealthy-targets"
+  count = length(local.environments)
+
+  alarm_name          = "${local.alb_names[count.index]}-unhealthy-targets"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "UnHealthyHostCount"
@@ -196,15 +228,22 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_targets" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this[0].arn_suffix
+    LoadBalancer = aws_lb.this[count.index].arn_suffix
   }
 
-  tags = local.all_tags
+  tags = merge(
+    local.merged_tags,
+    {
+      Environment = local.environments[count.index]
+    }
+  )
 }
 
 # No healthy targets (critical)
 resource "aws_cloudwatch_metric_alarm" "no_healthy_targets" {
-  alarm_name          = "${local.alb_name}-no-healthy-targets"
+  count = length(local.environments)
+
+  alarm_name          = "${local.alb_names[count.index]}-no-healthy-targets"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = 1
   metric_name         = "HealthyHostCount"
@@ -216,15 +255,22 @@ resource "aws_cloudwatch_metric_alarm" "no_healthy_targets" {
   treat_missing_data  = "breaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this[0].arn_suffix
+    LoadBalancer = aws_lb.this[count.index].arn_suffix
   }
 
-  tags = local.all_tags
+  tags = merge(
+    local.merged_tags,
+    {
+      Environment = local.environments[count.index]
+    }
+  )
 }
 
 # High TLS negotiation errors
 resource "aws_cloudwatch_metric_alarm" "high_tls_errors" {
-  alarm_name          = "${local.alb_name}-high-tls-errors"
+  count = length(var.environments)
+
+  alarm_name          = "${local.alb_names[count.index]}-high-tls-errors"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "TargetTLSNegotiationErrorCount"
@@ -236,8 +282,13 @@ resource "aws_cloudwatch_metric_alarm" "high_tls_errors" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this[0].arn_suffix
+    LoadBalancer = aws_lb.this[count.index].arn_suffix
   }
 
-  tags = local.all_tags
+  tags = merge(
+    local.merged_tags,
+    {
+      Environment = local.environments[count.index]
+    }
+  )
 }

@@ -6,20 +6,16 @@
 # No manual vpc_id or subnet_ids required!
 # ==============================================================================
 
+data "aws_caller_identity" "current" {}
+
+data "aws_partition" "current" {}
+
 # ------------------------------------------------------------------------------
 # VPC Discovery (Multi-Tenant)
 # ------------------------------------------------------------------------------
 
 data "aws_vpc" "main" {
-  tags = merge(
-    {
-      ManagedBy   = "Terraform"
-      Workspace   = var.workspace
-      Environment = var.environment
-    },
-    var.customer_name != "" ? { Customer = var.customer_name } : {},
-    var.project_name != "" ? { Project = var.project_name } : {}
-  )
+  id = var.vpc_id
 }
 
 # ------------------------------------------------------------------------------

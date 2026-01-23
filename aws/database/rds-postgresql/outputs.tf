@@ -9,18 +9,8 @@
 # ------------------------------------------------------------------------------
 
 output "db_identifier" {
-  description = "The DB identifier (multi-tenant aware)"
-  value       = local.db_identifier
-}
-
-output "customer_name" {
-  description = "Customer name (if applicable)"
-  value       = var.customer_name != "" ? var.customer_name : null
-}
-
-output "project_name" {
-  description = "Project name (if applicable)"
-  value       = var.project_name != "" ? var.project_name : null
+  description = "The DB identifier (multi-tenant aware, cleaned)"
+  value       = local.db_identifier_clean
 }
 
 # ------------------------------------------------------------------------------
@@ -29,42 +19,42 @@ output "project_name" {
 
 output "db_instance_id" {
   description = "The RDS instance identifier"
-  value       = var.create ? aws_db_instance.main[0].id : null
+  value       = aws_db_instance.main.id
 }
 
 output "db_instance_arn" {
   description = "The ARN of the RDS instance"
-  value       = var.create ? aws_db_instance.main[0].arn : null
+  value       = aws_db_instance.main.arn
 }
 
 output "db_instance_endpoint" {
   description = "The connection endpoint (address:port)"
-  value       = var.create ? aws_db_instance.main[0].endpoint : null
+  value       = aws_db_instance.main.endpoint
 }
 
 output "db_instance_address" {
   description = "The hostname of the RDS instance"
-  value       = var.create ? aws_db_instance.main[0].address : null
+  value       = aws_db_instance.main.address
 }
 
 output "db_instance_port" {
   description = "The database port"
-  value       = var.create ? aws_db_instance.main[0].port : null
+  value       = aws_db_instance.main.port
 }
 
 output "db_instance_resource_id" {
   description = "The RDS resource ID"
-  value       = var.create ? aws_db_instance.main[0].resource_id : null
+  value       = aws_db_instance.main.resource_id
 }
 
 output "db_instance_status" {
   description = "The RDS instance status"
-  value       = var.create ? aws_db_instance.main[0].status : null
+  value       = aws_db_instance.main.status
 }
 
 output "db_instance_availability_zone" {
   description = "The availability zone of the RDS instance"
-  value       = var.create ? aws_db_instance.main[0].availability_zone : null
+  value       = aws_db_instance.main.availability_zone
 }
 
 # ------------------------------------------------------------------------------
@@ -73,18 +63,18 @@ output "db_instance_availability_zone" {
 
 output "db_name" {
   description = "The name of the default database"
-  value       = var.create ? aws_db_instance.main[0].db_name : null
+  value       = aws_db_instance.main.db_name
 }
 
 output "master_username" {
   description = "The master username"
-  value       = var.create ? aws_db_instance.main[0].username : null
+  value       = aws_db_instance.main.username
   sensitive   = true
 }
 
 output "engine_version" {
   description = "The running version of the database engine"
-  value       = var.create ? aws_db_instance.main[0].engine_version_actual : null
+  value       = aws_db_instance.main.engine_version_actual
 }
 
 # ------------------------------------------------------------------------------
@@ -93,17 +83,17 @@ output "engine_version" {
 
 output "db_subnet_group_id" {
   description = "The db subnet group name"
-  value       = var.create ? aws_db_subnet_group.main[0].id : null
+  value       = aws_db_subnet_group.main.id
 }
 
 output "db_subnet_group_arn" {
   description = "The ARN of the db subnet group"
-  value       = var.create ? aws_db_subnet_group.main[0].arn : null
+  value       = aws_db_subnet_group.main.arn
 }
 
 output "security_group_id" {
   description = "The security group ID attached to the RDS instance"
-  value       = aws_security_group.rds.id
+  value       = module.rds_security_group.security_group_id
 }
 
 # ------------------------------------------------------------------------------
@@ -120,24 +110,28 @@ output "vpc_cidr" {
   value       = data.aws_vpc.main.cidr_block
 }
 
+# ------------------------------------------------------------------------------
+# Subnet Information (New)
+# ------------------------------------------------------------------------------
+
 output "rds_subnet_ids" {
-  description = "RDS private subnet IDs created by this module"
-  value       = aws_subnet.rds_private[*].id
+  description = "List of RDS subnet IDs"
+  value       = module.rds_subnets.subnet_ids
 }
 
 output "rds_subnet_cidrs" {
-  description = "RDS private subnet CIDR blocks"
-  value       = aws_subnet.rds_private[*].cidr_block
+  description = "List of RDS subnet CIDR blocks"
+  value       = module.rds_subnets.subnet_cidrs
 }
 
-output "availability_zones" {
+output "rds_availability_zones" {
   description = "Availability zones used for RDS subnets"
-  value       = aws_subnet.rds_private[*].availability_zone
+  value       = module.rds_subnets.availability_zones
 }
 
-output "eks_cluster_name" {
-  description = "EKS cluster name (if integrated)"
-  value       = local.eks_cluster_name
+output "rds_route_table_ids" {
+  description = "Route table IDs for RDS subnets"
+  value       = module.rds_subnets.route_table_ids
 }
 
 # ------------------------------------------------------------------------------
@@ -146,17 +140,17 @@ output "eks_cluster_name" {
 
 output "kms_key_id" {
   description = "KMS key ID for RDS encryption"
-  value       = aws_kms_key.rds.id
+  value       = module.kms_rds.key_id
 }
 
 output "kms_key_arn" {
   description = "KMS key ARN for RDS encryption"
-  value       = aws_kms_key.rds.arn
+  value       = module.kms_rds.key_arn
 }
 
 output "kms_alias_name" {
   description = "KMS key alias"
-  value       = aws_kms_alias.rds.name
+  value       = module.kms_rds.alias_name
 }
 
 # ------------------------------------------------------------------------------
@@ -165,12 +159,12 @@ output "kms_alias_name" {
 
 output "ssm_parameter_endpoint" {
   description = "SSM parameter name for RDS endpoint"
-  value       = var.create ? aws_ssm_parameter.rds_endpoint[0].name : null
+  value       = aws_ssm_parameter.rds_endpoint.name
 }
 
 output "ssm_parameter_master_password" {
   description = "SSM parameter name for master password (SecureString)"
-  value       = var.create ? aws_ssm_parameter.rds_master_password[0].name : null
+  value       = aws_ssm_parameter.rds_master_password.name
   sensitive   = true
 }
 
@@ -202,7 +196,7 @@ output "cloudwatch_alarms" {
     high_connections   = aws_cloudwatch_metric_alarm.high_connections.alarm_name
     high_read_latency  = aws_cloudwatch_metric_alarm.high_read_latency.alarm_name
     high_write_latency = aws_cloudwatch_metric_alarm.high_write_latency.alarm_name
-    high_replica_lag   = var.multi_az ? aws_cloudwatch_metric_alarm.high_replica_lag[0].alarm_name : null
+    high_replica_lag   = aws_cloudwatch_metric_alarm.high_replica_lag.alarm_name
   }
 }
 
@@ -212,28 +206,12 @@ output "cloudwatch_alarms" {
 
 output "monitoring_role_arn" {
   description = "ARN of the enhanced monitoring IAM role"
-  value       = local.create_monitoring_role ? aws_iam_role.monitoring[0].arn : ""
+  value       = aws_iam_role.monitoring.arn
 }
 
 output "performance_insights_enabled" {
   description = "Whether Performance Insights is enabled"
-  value       = var.create ? aws_db_instance.main[0].performance_insights_enabled : null
-}
-
-# ------------------------------------------------------------------------------
-# Connection Information
-# ------------------------------------------------------------------------------
-
-output "connection_string" {
-  description = "PostgreSQL connection string (without password)"
-  value       = "postgresql://${var.master_username}@${var.create ? aws_db_instance.main[0].address : null}:${var.port}/${var.database_name}"
-  sensitive   = true
-}
-
-output "psql_command" {
-  description = "Command to connect using psql (password from SSM)"
-  value       = "psql -h ${var.create ? aws_db_instance.main[0].address : null} -p ${var.port} -U ${var.master_username} -d ${var.database_name}"
-  sensitive   = true
+  value       = aws_db_instance.main.performance_insights_enabled
 }
 
 # ------------------------------------------------------------------------------
@@ -242,10 +220,10 @@ output "psql_command" {
 
 output "parameter_group_id" {
   description = "The db parameter group name"
-  value       = var.create ? aws_db_parameter_group.main[0].id : null
+  value       = aws_db_parameter_group.main.id
 }
 
 output "parameter_group_arn" {
   description = "The ARN of the db parameter group"
-  value       = var.create ? aws_db_parameter_group.main[0].arn : null
+  value       = aws_db_parameter_group.main.arn
 }

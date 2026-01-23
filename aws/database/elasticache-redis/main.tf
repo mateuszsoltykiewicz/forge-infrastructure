@@ -5,12 +5,44 @@
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
+# KMS Key for Redis Encryption
+# ------------------------------------------------------------------------------
+
+module "kms_redis" {
+  source = "../../security/kms"
+
+  # Pattern A variables
+  common_prefix = var.common_prefix
+
+  common_tags   = local.merged_tags
+
+  # KMS Key configuration
+  key_purpose     = "Redis"
+  key_description = "ElastiCache Redis ${local.replication_group_id} encryption (data, logs, SSM)"
+  key_usage       = "ENCRYPT_DECRYPT"
+
+  # Security settings
+  deletion_window_in_days = var.kms_deletion_window_in_days
+  enable_key_rotation     = true
+
+  # Service principals - Redis, CloudWatch Logs, SSM
+  key_service_roles = [
+    "elasticache.amazonaws.com",
+    "logs.${local.aws_region}.amazonaws.com",
+    "ssm.amazonaws.com"
+  ]
+
+  # Root account as administrator
+  key_administrators = [
+    "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:root"
+  ]
+}
+
+# ------------------------------------------------------------------------------
 # Random Auth Token
 # ------------------------------------------------------------------------------
 
 resource "random_password" "auth_token" {
-  count = var.auth_token_enabled ? 1 : 0
-
   length  = 32
   special = true
   # ElastiCache auth token allowed special characters
@@ -22,19 +54,18 @@ resource "random_password" "auth_token" {
 # ------------------------------------------------------------------------------
 
 resource "aws_elasticache_subnet_group" "main" {
-  count = var.create ? 1 : 0
 
-  name       = "${local.replication_group_id}-subnet-group"
-  subnet_ids = aws_subnet.redis_private[*].id
+  name       = local.sanitized_subnet_group_name
+  subnet_ids = module.redis_subnets.subnet_ids
 
   tags = merge(
     local.merged_tags,
     {
-      Name = "${local.replication_group_id}-subnet-group"
+      Name = local.sanitized_subnet_group_name
     }
   )
 
-  depends_on = [aws_subnet.redis_private]
+  depends_on = [module.redis_subnets]
 }
 
 # ------------------------------------------------------------------------------
@@ -42,9 +73,8 @@ resource "aws_elasticache_subnet_group" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_elasticache_parameter_group" "main" {
-  count = var.create && var.create_parameter_group ? 1 : 0
 
-  name        = local.parameter_group_name
+  name        = local.sanitized_parameter_group_name
   family      = var.parameter_group_family
   description = "Custom parameter group for ${local.replication_group_id}"
 
@@ -59,7 +89,7 @@ resource "aws_elasticache_parameter_group" "main" {
   tags = merge(
     local.merged_tags,
     {
-      Name = local.parameter_group_name
+      Name = local.sanitized_parameter_group_name
     }
   )
 
@@ -73,35 +103,36 @@ resource "aws_elasticache_parameter_group" "main" {
 # ------------------------------------------------------------------------------
 
 resource "aws_elasticache_replication_group" "main" {
-  count = var.create ? 1 : 0
 
-  replication_group_id = local.replication_group_id
+  replication_group_id = local.sanitized_name_id
   description          = var.description
 
   # Engine Configuration
   engine               = "redis"
   engine_version       = var.engine_version
   port                 = var.port
-  parameter_group_name = var.create_parameter_group ? aws_elasticache_parameter_group.main[0].name : null
+  parameter_group_name = aws_elasticache_parameter_group.main.name
 
   # Node Configuration
   node_type          = var.node_type
   num_cache_clusters = var.num_cache_clusters
 
   # High Availability
-  automatic_failover_enabled = var.automatic_failover_enabled
-  multi_az_enabled           = var.multi_az_enabled
+  automatic_failover_enabled = true
+  multi_az_enabled           = true
 
   # Network Configuration
-  subnet_group_name           = aws_elasticache_subnet_group.main[0].name
-  security_group_ids          = [aws_security_group.redis.id]
-  preferred_cache_cluster_azs = length(var.preferred_cache_cluster_azs) > 0 ? var.preferred_cache_cluster_azs : null
+  subnet_group_name           = aws_elasticache_subnet_group.main.name
+  security_group_ids          = [module.redis_security_group.security_group_id]
+
+  # make it dependent on var.availability_zones
+  preferred_cache_cluster_azs = var.availability_zones
 
   # Security Configuration
-  at_rest_encryption_enabled = var.at_rest_encryption_enabled
-  transit_encryption_enabled = var.transit_encryption_enabled
-  auth_token                 = local.auth_token
-  kms_key_id                 = aws_kms_key.redis.arn
+  at_rest_encryption_enabled = true
+  transit_encryption_enabled = true
+  auth_token                 = random_password.auth_token.result
+  kms_key_id                 = module.kms_redis.key_arn
 
   # Backup Configuration
   snapshot_retention_limit  = var.snapshot_retention_limit
@@ -111,8 +142,8 @@ resource "aws_elasticache_replication_group" "main" {
   # Maintenance Configuration
   maintenance_window         = var.maintenance_window
   notification_topic_arn     = var.notification_topic_arn != "" ? var.notification_topic_arn : null
-  apply_immediately          = var.apply_immediately
-  auto_minor_version_upgrade = var.auto_minor_version_upgrade
+  apply_immediately          = false
+  auto_minor_version_upgrade = false
 
   # Log Delivery Configuration
   log_delivery_configuration {
@@ -132,7 +163,7 @@ resource "aws_elasticache_replication_group" "main" {
   tags = merge(
     local.merged_tags,
     {
-      Name = local.replication_group_id
+      Name = local.sanitized_name_id
     }
   )
 
@@ -144,82 +175,30 @@ resource "aws_elasticache_replication_group" "main" {
   }
 
   depends_on = [
-    aws_kms_key.redis,
-    aws_security_group.redis,
+    module.kms_redis,
+    module.redis_security_group,
     aws_cloudwatch_log_group.redis_slow_log,
-    aws_cloudwatch_log_group.redis_engine_log
+    aws_cloudwatch_log_group.redis_engine_log,
+    module.redis_subnets,
+    aws_elasticache_parameter_group.main,
+    aws_elasticache_subnet_group.main,
+    random_password.auth_token
   ]
-}
-
-# ------------------------------------------------------------------------------
-# SSM Parameter Store (for Redis connection info and auth token)
-# ------------------------------------------------------------------------------
-
-# Redis primary endpoint
-resource "aws_ssm_parameter" "redis_primary_endpoint" {
-  count = var.create ? 1 : 0
-
-  name        = "/${var.environment}/${local.replication_group_id}/primary-endpoint"
-  description = "Redis primary endpoint for ${local.replication_group_id}"
-  type        = "String"
-  value       = aws_elasticache_replication_group.main[0].primary_endpoint_address
-
-  tags = merge(
-    local.merged_tags,
-    {
-      Name = "${local.replication_group_id}-primary-endpoint"
-    }
-  )
-}
-
-# Redis reader endpoint (if Multi-AZ)
-resource "aws_ssm_parameter" "redis_reader_endpoint" {
-  count = var.create && var.multi_az_enabled ? 1 : 0
-
-  name        = "/${var.environment}/${local.replication_group_id}/reader-endpoint"
-  description = "Redis reader endpoint for ${local.replication_group_id}"
-  type        = "String"
-  value       = aws_elasticache_replication_group.main[0].reader_endpoint_address
-
-  tags = merge(
-    local.merged_tags,
-    {
-      Name = "${local.replication_group_id}-reader-endpoint"
-    }
-  )
-}
-
-# Redis port
-resource "aws_ssm_parameter" "redis_port" {
-  count = var.create ? 1 : 0
-
-  name        = "/${var.environment}/${local.replication_group_id}/port"
-  description = "Redis port for ${local.replication_group_id}"
-  type        = "String"
-  value       = tostring(var.port)
-
-  tags = merge(
-    local.merged_tags,
-    {
-      Name = "${local.replication_group_id}-port"
-    }
-  )
 }
 
 # Auth token (SecureString)
 resource "aws_ssm_parameter" "redis_auth_token" {
-  count = var.create && var.auth_token_enabled ? 1 : 0
 
-  name        = "/${var.environment}/${local.replication_group_id}/auth-token"
+  name        = "/${local.sanitized_ssm_name}/auth-token"
   description = "Redis AUTH token for ${local.replication_group_id}"
   type        = "SecureString"
-  value       = local.auth_token
-  key_id      = aws_kms_key.redis.arn
+  value       = random_password.auth_token.result
+  key_id      = module.kms_redis.key_arn
 
   tags = merge(
     local.merged_tags,
     {
-      Name = "${local.replication_group_id}-auth-token"
+      Name = "/${local.sanitized_ssm_name}/auth-token"
     }
   )
 }

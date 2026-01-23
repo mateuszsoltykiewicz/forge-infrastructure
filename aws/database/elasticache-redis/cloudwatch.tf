@@ -9,28 +9,28 @@
 # ------------------------------------------------------------------------------
 
 resource "aws_cloudwatch_log_group" "redis_slow_log" {
-  name              = "/aws/elasticache/${local.replication_group_id}/slow-log"
+  name              = "${local.sanitized_cloudwatch_log_group_name}/slow-log"
   retention_in_days = var.cloudwatch_retention_days
-  kms_key_id        = aws_kms_key.redis.arn
+  kms_key_id        = module.kms_redis.key_arn
 
   tags = merge(
     local.merged_tags,
     {
-      Name    = "${local.replication_group_id}-slow-log"
+      Name    = "${local.sanitized_cloudwatch_log_group_name}/slow-log"
       LogType = "slow-log"
     }
   )
 }
 
 resource "aws_cloudwatch_log_group" "redis_engine_log" {
-  name              = "/aws/elasticache/${local.replication_group_id}/engine-log"
+  name              = "${local.sanitized_cloudwatch_log_group_name}/engine-log"
   retention_in_days = var.cloudwatch_retention_days
-  kms_key_id        = aws_kms_key.redis.arn
+  kms_key_id        = module.kms_redis.key_arn
 
   tags = merge(
     local.merged_tags,
     {
-      Name    = "${local.replication_group_id}-engine-log"
+      Name    = "${local.sanitized_cloudwatch_log_group_name}/engine-log"
       LogType = "engine-log"
     }
   )
@@ -41,7 +41,7 @@ resource "aws_cloudwatch_log_group" "redis_engine_log" {
 # ------------------------------------------------------------------------------
 
 resource "aws_cloudwatch_dashboard" "redis" {
-  dashboard_name = "${local.replication_group_id}-dashboard"
+  dashboard_name = "${local.sanitized_name_id}-dashboard"
 
   dashboard_body = jsonencode({
     widgets = [
@@ -54,7 +54,7 @@ resource "aws_cloudwatch_dashboard" "redis" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = var.aws_region
+          region  = local.aws_region
           title   = "CPU Utilization"
           period  = 300
         }
@@ -69,7 +69,7 @@ resource "aws_cloudwatch_dashboard" "redis" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = var.aws_region
+          region  = local.aws_region
           title   = "Memory Usage"
           period  = 300
         }
@@ -84,7 +84,7 @@ resource "aws_cloudwatch_dashboard" "redis" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = var.aws_region
+          region  = local.aws_region
           title   = "Network I/O"
           period  = 300
         }
@@ -99,7 +99,7 @@ resource "aws_cloudwatch_dashboard" "redis" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = var.aws_region
+          region  = local.aws_region
           title   = "Connections"
           period  = 300
         }
@@ -114,7 +114,7 @@ resource "aws_cloudwatch_dashboard" "redis" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = var.aws_region
+          region  = local.aws_region
           title   = "Cache Performance"
           period  = 300
         }
@@ -128,7 +128,7 @@ resource "aws_cloudwatch_dashboard" "redis" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = var.aws_region
+          region  = local.aws_region
           title   = "Evictions"
           period  = 300
         }
@@ -137,12 +137,12 @@ resource "aws_cloudwatch_dashboard" "redis" {
       {
         type = "metric"
         properties = {
-          metrics = var.multi_az_enabled ? [
+          metrics = [
             ["AWS/ElastiCache", "ReplicationLag", { stat = "Average" }]
-          ] : []
+          ]
           view    = "timeSeries"
           stacked = false
-          region  = var.aws_region
+          region  = local.aws_region
           title   = "Replication Lag"
           period  = 300
         }
@@ -157,7 +157,7 @@ resource "aws_cloudwatch_dashboard" "redis" {
 
 # High CPU Utilization
 resource "aws_cloudwatch_metric_alarm" "high_cpu" {
-  alarm_name          = "${local.replication_group_id}-high-cpu"
+  alarm_name          = "${local.sanitized_name_id}-high-cpu"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "CPUUtilization"
@@ -169,7 +169,7 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   alarm_actions       = var.notification_topic_arn != "" ? [var.notification_topic_arn] : []
 
   dimensions = {
-    ReplicationGroupId = aws_elasticache_replication_group.main[0].id
+    ReplicationGroupId = aws_elasticache_replication_group.main.id
   }
 
   tags = local.merged_tags
@@ -177,7 +177,7 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
 
 # High Memory Usage
 resource "aws_cloudwatch_metric_alarm" "high_memory" {
-  alarm_name          = "${local.replication_group_id}-high-memory"
+  alarm_name          = "${local.sanitized_name_id}-high-memory"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "DatabaseMemoryUsagePercentage"
@@ -189,7 +189,7 @@ resource "aws_cloudwatch_metric_alarm" "high_memory" {
   alarm_actions       = var.notification_topic_arn != "" ? [var.notification_topic_arn] : []
 
   dimensions = {
-    ReplicationGroupId = aws_elasticache_replication_group.main[0].id
+    ReplicationGroupId = aws_elasticache_replication_group.main.id
   }
 
   tags = local.merged_tags
@@ -197,7 +197,7 @@ resource "aws_cloudwatch_metric_alarm" "high_memory" {
 
 # High Evictions
 resource "aws_cloudwatch_metric_alarm" "high_evictions" {
-  alarm_name          = "${local.replication_group_id}-high-evictions"
+  alarm_name          = "${local.sanitized_name_id}-high-evictions"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "Evictions"
@@ -209,7 +209,7 @@ resource "aws_cloudwatch_metric_alarm" "high_evictions" {
   alarm_actions       = var.notification_topic_arn != "" ? [var.notification_topic_arn] : []
 
   dimensions = {
-    ReplicationGroupId = aws_elasticache_replication_group.main[0].id
+    ReplicationGroupId = aws_elasticache_replication_group.main.id
   }
 
   tags = local.merged_tags
@@ -217,9 +217,8 @@ resource "aws_cloudwatch_metric_alarm" "high_evictions" {
 
 # High Replication Lag (Multi-AZ only)
 resource "aws_cloudwatch_metric_alarm" "high_replication_lag" {
-  count = var.multi_az_enabled ? 1 : 0
 
-  alarm_name          = "${local.replication_group_id}-high-replication-lag"
+  alarm_name          = "${local.sanitized_name_id}-high-replication-lag"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "ReplicationLag"
@@ -231,7 +230,7 @@ resource "aws_cloudwatch_metric_alarm" "high_replication_lag" {
   alarm_actions       = var.notification_topic_arn != "" ? [var.notification_topic_arn] : []
 
   dimensions = {
-    ReplicationGroupId = aws_elasticache_replication_group.main[0].id
+    ReplicationGroupId = aws_elasticache_replication_group.main.id
   }
 
   tags = local.merged_tags
@@ -239,7 +238,7 @@ resource "aws_cloudwatch_metric_alarm" "high_replication_lag" {
 
 # High Connection Count
 resource "aws_cloudwatch_metric_alarm" "high_connections" {
-  alarm_name          = "${local.replication_group_id}-high-connections"
+  alarm_name          = "${local.sanitized_name_id}-high-connections"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "CurrConnections"
@@ -251,7 +250,7 @@ resource "aws_cloudwatch_metric_alarm" "high_connections" {
   alarm_actions       = var.notification_topic_arn != "" ? [var.notification_topic_arn] : []
 
   dimensions = {
-    ReplicationGroupId = aws_elasticache_replication_group.main[0].id
+    ReplicationGroupId = aws_elasticache_replication_group.main.id
   }
 
   tags = local.merged_tags

@@ -1,15 +1,4 @@
 # ==============================================================================
-# Resource Creation Control
-# ==============================================================================
-
-variable "create" {
-  description = "Whether to create resources. Set to false to skip resource creation."
-  type        = bool
-  default     = true
-}
-
-
-# ==============================================================================
 # RDS PostgreSQL Module - Input Variables
 # ==============================================================================
 # This module creates an Amazon RDS PostgreSQL database instance.
@@ -17,37 +6,18 @@ variable "create" {
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# Multi-Tenant Context
+# Firewall / Communication Tier
 # ------------------------------------------------------------------------------
-
-variable "workspace" {
-  description = "Workspace name for VPC discovery (e.g., forge-platform)"
+variable "firewall_tier" {
+  description = "Communication tier for resource naming and organization"
   type        = string
-  default     = "forge-platform"
+  default     = "RDS"
 }
 
-variable "customer_id" {
-  description = "Customer identifier (empty for shared infrastructure)"
+variable "firewall_type" {
+  description = "Firewall type for resource naming and organization"
   type        = string
-  default     = ""
-}
-
-variable "customer_name" {
-  description = "Customer name for resource naming (empty for shared infrastructure)"
-  type        = string
-  default     = ""
-}
-
-variable "project_name" {
-  description = "Project name for project-level isolation (empty for customer-level or shared)"
-  type        = string
-  default     = ""
-}
-
-variable "plan_tier" {
-  description = "Customer plan tier (e.g., basic, pro, advanced) for cost allocation"
-  type        = string
-  default     = ""
+  default     = "Slave"
 }
 
 # ------------------------------------------------------------------------------
@@ -55,19 +25,24 @@ variable "plan_tier" {
 # ------------------------------------------------------------------------------
 
 variable "environment" {
-  description = "Environment name (e.g., production, staging, development)"
+  description = "Environment name (e.g., production, staging, development, shared)"
   type        = string
+  default     = "shared"
 
   validation {
-    condition     = contains(["production", "staging", "development"], var.environment)
-    error_message = "Environment must be one of: production, staging, or development."
+    condition     = contains(["production", "staging", "development", "shared"], var.environment)
+    error_message = "Environment must be one of: production, staging, development, or shared."
   }
-}
 
-variable "identifier_override" {
-  description = "Optional override for DB identifier (if empty, auto-generated based on customer context)"
-  type        = string
-  default     = ""
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{0,13}[a-z0-9]$", var.environment))
+    error_message = "environment must be 2-15 characters, start with letter, lowercase letters/numbers/hyphens only, no trailing hyphen"
+  }
+
+  validation {
+    condition     = length(var.environment) <= 15
+    error_message = "environment must not exceed 15 characters for RDS identifier compatibility"
+  }
 }
 
 variable "engine_version" {
@@ -110,13 +85,13 @@ variable "max_allocated_storage" {
 }
 
 variable "storage_type" {
-  description = "Storage type: gp3, gp2, or io1"
+  description = "Storage type: gp3, io1, io2"
   type        = string
   default     = "gp3"
 
   validation {
-    condition     = contains(["gp3", "gp2", "io1", "io2"], var.storage_type)
-    error_message = "Storage type must be one of: gp3, gp2, io1, io2."
+    condition     = contains(["gp3", "io1", "io2"], var.storage_type)
+    error_message = "Storage type must be one of: gp3, io1, io2."
   }
 }
 
@@ -223,34 +198,6 @@ variable "rds_subnet_netnum_start" {
   }
 }
 
-variable "eks_cluster_name" {
-  description = "EKS cluster name for security group integration (empty = auto-discover)"
-  type        = string
-  default     = ""
-}
-
-variable "publicly_accessible" {
-  description = "Make the RDS instance publicly accessible (not recommended for production)"
-  type        = bool
-  default     = false
-}
-
-# ------------------------------------------------------------------------------
-# High Availability Configuration
-# ------------------------------------------------------------------------------
-
-variable "multi_az" {
-  description = "Enable Multi-AZ deployment for high availability"
-  type        = bool
-  default     = true
-}
-
-variable "availability_zone" {
-  description = "Preferred AZ for single-AZ deployment (ignored if multi_az = true)"
-  type        = string
-  default     = ""
-}
-
 # ------------------------------------------------------------------------------
 # Backup Configuration
 # ------------------------------------------------------------------------------
@@ -288,18 +235,6 @@ variable "maintenance_window" {
   }
 }
 
-variable "skip_final_snapshot" {
-  description = "Skip final snapshot when deleting (not recommended for production)"
-  type        = bool
-  default     = false
-}
-
-variable "final_snapshot_identifier_prefix" {
-  description = "Prefix for final snapshot identifier"
-  type        = string
-  default     = "final-snapshot"
-}
-
 variable "copy_tags_to_snapshot" {
   description = "Copy all tags to snapshots"
   type        = bool
@@ -309,12 +244,6 @@ variable "copy_tags_to_snapshot" {
 # ------------------------------------------------------------------------------
 # Security Configuration
 # ------------------------------------------------------------------------------
-
-variable "storage_encrypted" {
-  description = "Enable storage encryption"
-  type        = bool
-  default     = true
-}
 
 variable "enable_kms_key_rotation" {
   description = "Enable automatic KMS key rotation"
@@ -342,7 +271,7 @@ variable "iam_database_authentication_enabled" {
 variable "deletion_protection" {
   description = "Enable deletion protection"
   type        = bool
-  default     = true
+  default     = false
 }
 
 # ------------------------------------------------------------------------------
@@ -378,9 +307,9 @@ variable "performance_insights_enabled" {
 }
 
 variable "cloudwatch_retention_days" {
-  description = "CloudWatch Logs retention period in days (1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653)"
+  description = "CloudWatch Logs retention period in days (1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653). Default 1 day - logs are exported to S3 for long-term HIPAA compliance (7 years)."
   type        = number
-  default     = 30
+  default     = 1
 
   validation {
     condition     = contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653], var.cloudwatch_retention_days)
@@ -412,13 +341,15 @@ variable "parameter_group_family" {
 variable "parameters" {
   description = "Database parameters to apply"
   type = list(object({
-    name  = string
-    value = string
+    name         = string
+    value        = string
+    apply_method = optional(string, "immediate")
   }))
   default = [
     {
-      name  = "shared_preload_libraries"
-      value = "pg_stat_statements"
+      name         = "shared_preload_libraries"
+      value        = "pg_stat_statements"
+      apply_method = "pending-reboot" # Static parameter requires DB restart
     },
     {
       name  = "log_statement"
@@ -435,37 +366,56 @@ variable "parameters" {
 # Resource Tags
 # ------------------------------------------------------------------------------
 
-variable "tags" {
-  description = "Additional tags to apply to all RDS resources"
+variable "common_tags" {
+  description = "Common tags passed from root module (ManagedBy, Workspace, Region, DomainName, Customer, Project)"
   type        = map(string)
   default     = {}
 }
 
+variable "common_prefix" {
+  description = "Common prefix for resource naming"
+  type        = string
+}
+
 # ------------------------------------------------------------------------------
-# Resource Sharing Configuration
+# Network Configuration
 # ------------------------------------------------------------------------------
 
-variable "resource_sharing" {
-  description = "Resource sharing mode: 'dedicated' (single environment) or 'shared' (multiple environments)"
+variable "aws_region" {
+  description = "AWS region for RDS resources"
   type        = string
-  default     = "dedicated"
+}
+
+variable "vpc_id" {
+  description = "VPC ID where the RDS instance will be deployed"
+  type        = string
+}
+
+# ------------------------------------------------------------------------------
+# Subnet Configuration
+# ------------------------------------------------------------------------------
+
+variable "subnet_cidrs" {
+  description = "List of CIDR blocks for Client VPN subnets (from root locals)"
+  type        = list(string)
 
   validation {
-    condition     = contains(["dedicated", "shared"], var.resource_sharing)
-    error_message = "Resource sharing must be 'dedicated' or 'shared'."
+    condition     = length(var.subnet_cidrs) > 0 && length(var.subnet_cidrs) <= 3
+    error_message = "subnet_cidrs must contain 1-3 CIDR blocks"
   }
 }
 
-variable "shared_with_environments" {
-  description = "List of environments sharing this RDS instance (when resource_sharing = 'shared'). Example: ['staging', 'development']"
+variable "availability_zones" {
+  description = "List of availability zones for Client VPN subnets (from root locals)"
   type        = list(string)
-  default     = []
 
   validation {
-    condition = alltrue([
-      for env in var.shared_with_environments :
-      contains(["production", "staging", "development"], env)
-    ])
-    error_message = "Shared environments must be one of: production, staging, development."
+    condition     = length(var.availability_zones) > 0 && length(var.availability_zones) <= 3
+    error_message = "availability_zones must contain 1-3 zones"
+  }
+
+  validation {
+    condition     = length(var.availability_zones) == length(var.subnet_cidrs)
+    error_message = "availability_zones and subnet_cidrs must have the same length"
   }
 }

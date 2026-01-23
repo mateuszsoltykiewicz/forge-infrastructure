@@ -1,13 +1,3 @@
-# ==============================================================================
-# Resource Creation Control
-# ==============================================================================
-
-variable "create" {
-  description = "Whether to create resources. Set to false to skip resource creation."
-  type        = bool
-  default     = true
-}
-
 
 # ==============================================================================
 # EKS Module - Input Variables
@@ -16,159 +6,39 @@ variable "create" {
 # terraform-aws-modules/eks/aws module.
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# Customer Context (Required for Customer-Aware Naming)
-# ------------------------------------------------------------------------------
-
-variable "customer_id" {
-  description = "Customer identifier (empty for shared infrastructure)"
+variable "common_prefix" {
+  description = "Common prefix for resource naming"
   type        = string
-  default     = ""
-}
-
-variable "customer_name" {
-  description = "Customer name for resource naming (empty for shared infrastructure)"
-  type        = string
-  default     = ""
-}
-
-variable "project_name" {
-  description = "Project name within customer context (e.g., web-platform, mobile-app). Enables multiple EKS clusters per customer."
-  type        = string
-  default     = ""
-}
-
-variable "plan_tier" {
-  description = "Customer plan tier (e.g., basic, pro, advanced) for cost allocation"
-  type        = string
-  default     = ""
 }
 
 # ------------------------------------------------------------------------------
-# EKS Cluster Configuration
+# Firewall / Communication Tier
 # ------------------------------------------------------------------------------
-
-variable "environment" {
-  description = "Environment name (e.g., production, staging, development, shared)"
+variable "firewall_tier" {
+  description = "Communication tier for resource naming and organization"
   type        = string
-
-  validation {
-    condition     = contains(["production", "staging", "development", "shared"], var.environment)
-    error_message = "Environment must be one of: production, staging, development, or shared."
-  }
+  default     = "EKS"
 }
 
-variable "cluster_name_override" {
-  description = "Optional override for cluster name (if empty, auto-generated based on customer context)"
+variable "firewall_type" {
+  description = "Firewall type for resource naming and organization"
   type        = string
-  default     = ""
-}
-
-variable "kubernetes_version" {
-  description = "Kubernetes version to use for the EKS cluster"
-  type        = string
-  default     = "1.30"
-
-  validation {
-    condition     = can(regex("^1\\.(2[89]|3[0-9])$", var.kubernetes_version))
-    error_message = "Kubernetes version must be 1.28 or higher."
-  }
-}
-
-# ------------------------------------------------------------------------------
-# Network Configuration (Auto-Discovery)
-# ------------------------------------------------------------------------------
-
-variable "workspace" {
-  description = "Workspace identifier for VPC discovery (e.g., production, staging)"
-  type        = string
-
-  validation {
-    condition     = length(var.workspace) > 0
-    error_message = "Workspace must not be empty."
-  }
+  default     = "Master"
 }
 
 # ------------------------------------------------------------------------------
 # EKS Subnets Configuration
 # ------------------------------------------------------------------------------
 
-variable "eks_subnet_az_count" {
-  description = "Number of availability zones for EKS subnets (2-3)"
-  type        = number
-  default     = 3
-
-  validation {
-    condition     = var.eks_subnet_az_count >= 2 && var.eks_subnet_az_count <= 3
-    error_message = "EKS subnets must span 2 or 3 availability zones."
-  }
-}
-
-variable "eks_subnet_newbits" {
-  description = "Number of additional bits to add to VPC CIDR for EKS subnets (e.g., 3 for /19 from /16 VPC)"
-  type        = number
-  default     = 3
-
-  validation {
-    condition     = var.eks_subnet_newbits >= 1 && var.eks_subnet_newbits <= 8
-    error_message = "Subnet newbits must be between 1 and 8."
-  }
-}
-
-variable "eks_subnet_netnum_start" {
-  description = "Starting network number for EKS subnet CIDR calculation"
-  type        = number
-  default     = 4
-
-  validation {
-    condition     = var.eks_subnet_netnum_start >= 0
-    error_message = "Subnet netnum_start must be non-negative."
-  }
-}
-
 variable "kubernetes_cluster_tag_value" {
   description = "Value for kubernetes.io/cluster tag (owned or shared)"
   type        = string
-  default     = "owned"
+  default     = "shared"
 
   validation {
     condition     = contains(["owned", "shared"], var.kubernetes_cluster_tag_value)
     error_message = "Cluster tag value must be 'owned' or 'shared'."
   }
-}
-
-variable "enable_ipv6" {
-  description = "Enable IPv6 for EKS subnets"
-  type        = bool
-  default     = false
-}
-
-variable "enable_nat_gateway" {
-  description = "Enable NAT Gateway for temporary public access (can be disabled after setup)"
-  type        = bool
-  default     = false
-}
-
-# ------------------------------------------------------------------------------
-# Cluster Endpoint Configuration
-# ------------------------------------------------------------------------------
-
-variable "cluster_endpoint_public_access" {
-  description = "Enable public API server endpoint"
-  type        = bool
-  default     = true
-}
-
-variable "cluster_endpoint_private_access" {
-  description = "Enable private API server endpoint"
-  type        = bool
-  default     = true
-}
-
-variable "cluster_endpoint_public_access_cidrs" {
-  description = "CIDR blocks allowed to access the public API endpoint"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
 }
 
 # ------------------------------------------------------------------------------
@@ -231,32 +101,21 @@ variable "system_node_group_instance_types" {
   default     = ["m7g.large", "m7g.xlarge"]
 }
 
-variable "system_node_group_capacity_type" {
-  description = "Capacity type for system node group (ON_DEMAND or SPOT)"
-  type        = string
-  default     = "ON_DEMAND"
-
-  validation {
-    condition     = contains(["ON_DEMAND", "SPOT"], var.system_node_group_capacity_type)
-    error_message = "Capacity type must be either ON_DEMAND or SPOT."
-  }
-}
-
 variable "system_node_group_min_size" {
   description = "Minimum number of nodes in system node group"
   type        = number
   default     = 2
 
   validation {
-    condition     = var.system_node_group_min_size >= 2
-    error_message = "Minimum size must be at least 2 for high availability."
+    condition     = var.system_node_group_min_size >= 0
+    error_message = "Minimum size must be at least 0 for high availability."
   }
 }
 
 variable "system_node_group_max_size" {
   description = "Maximum number of nodes in system node group"
   type        = number
-  default     = 10
+  default     = 4
 
   validation {
     condition     = var.system_node_group_max_size >= var.system_node_group_min_size
@@ -267,7 +126,7 @@ variable "system_node_group_max_size" {
 variable "system_node_group_desired_size" {
   description = "Desired number of nodes in system node group"
   type        = number
-  default     = 3
+  default     = 2
 
   validation {
     condition     = var.system_node_group_desired_size >= var.system_node_group_min_size && var.system_node_group_desired_size <= var.system_node_group_max_size
@@ -292,8 +151,8 @@ variable "system_node_group_disk_type" {
   default     = "gp3"
 
   validation {
-    condition     = contains(["gp2", "gp3", "io1", "io2"], var.system_node_group_disk_type)
-    error_message = "Disk type must be one of: gp2, gp3, io1, io2."
+    condition     = contains(["gp3", "io1", "io2"], var.system_node_group_disk_type)
+    error_message = "Disk type must be one of: gp3, io1, io2."
   }
 }
 
@@ -317,28 +176,6 @@ variable "system_node_group_disk_throughput" {
     condition     = var.system_node_group_disk_throughput >= 125 && var.system_node_group_disk_throughput <= 1000
     error_message = "Disk throughput must be between 125 and 1000 MB/s for gp3 volumes."
   }
-}
-
-variable "enable_system_node_taints" {
-  description = "Enable taints on system nodes (CriticalAddonsOnly)"
-  type        = bool
-  default     = true
-}
-
-# ------------------------------------------------------------------------------
-# Bootstrap Configuration
-# ------------------------------------------------------------------------------
-
-variable "enable_bootstrap_user_data" {
-  description = "Enable custom bootstrap user data for nodes"
-  type        = bool
-  default     = false
-}
-
-variable "pre_bootstrap_user_data" {
-  description = "Custom user data to run before node bootstrap"
-  type        = string
-  default     = ""
 }
 
 # ------------------------------------------------------------------------------
@@ -371,10 +208,20 @@ variable "additional_access_entries" {
 # Resource Tags
 # ------------------------------------------------------------------------------
 
-variable "tags" {
-  description = "Additional tags to apply to all EKS resources"
+variable "common_tags" {
+  description = "Common tags passed from root module (ManagedBy, Workspace, Region, DomainName, Customer, Project)"
   type        = map(string)
   default     = {}
+}
+
+variable "aws_region" {
+  description = "AWS region for EKS cluster resources"
+  type        = string
+}
+
+variable "vpc_id" {
+  description = "ID of the VPC to deploy EKS within"
+  type        = string
 }
 
 # ------------------------------------------------------------------------------
@@ -418,4 +265,48 @@ variable "namespaces" {
     }), null)
   }))
   default = {}
+}
+
+# ------------------------------------------------------------------------------
+# Subnet Configuration
+# ------------------------------------------------------------------------------
+
+variable "subnet_cidrs" {
+  description = "List of CIDR blocks for Client VPN subnets (from root locals)"
+  type        = list(string)
+
+  validation {
+    condition     = length(var.subnet_cidrs) > 0 && length(var.subnet_cidrs) <= 3
+    error_message = "subnet_cidrs must contain 1-3 CIDR blocks"
+  }
+}
+
+variable "availability_zones" {
+  description = "List of availability zones for Client VPN subnets (from root locals)"
+  type        = list(string)
+
+  validation {
+    condition     = length(var.availability_zones) > 0 && length(var.availability_zones) <= 3
+    error_message = "availability_zones must contain 1-3 zones"
+  }
+
+  validation {
+    condition     = length(var.availability_zones) == length(var.subnet_cidrs)
+    error_message = "availability_zones and subnet_cidrs must have the same length"
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Routing Configuration
+# ------------------------------------------------------------------------------
+
+variable "nat_gateway_ids" {
+  description = "List of NAT Gateway IDs for private subnet egress (0.0.0.0/0 → NAT GW)"
+  type        = list(string)
+}
+
+variable "s3_gateway_endpoint_id" {
+  description = "S3 Gateway VPC Endpoint ID for route table association (ECR image pulls)"
+  type        = string
+  default     = null
 }

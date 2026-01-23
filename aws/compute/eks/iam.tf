@@ -91,7 +91,6 @@ resource "aws_iam_role_policy_attachment" "ebs_csi_irsa" {
 
 # Optional: Add KMS permissions if using encrypted volumes
 resource "aws_iam_policy" "ebs_csi_kms" {
-  count = var.enable_ebs_csi_kms_policy ? 1 : 0
 
   name        = "${local.cluster_name}-ebs-csi-kms"
   description = "Additional KMS permissions for EBS CSI driver"
@@ -106,7 +105,7 @@ resource "aws_iam_policy" "ebs_csi_kms" {
           "kms:ListGrants",
           "kms:RevokeGrant"
         ]
-        Resource = [aws_kms_key.eks[0].arn]
+        Resource = [module.kms_eks.key_arn]
         Condition = {
           Bool = {
             "kms:GrantIsForAWSResource" = "true"
@@ -122,7 +121,7 @@ resource "aws_iam_policy" "ebs_csi_kms" {
           "kms:GenerateDataKey*",
           "kms:DescribeKey"
         ]
-        Resource = [aws_kms_key.eks[0].arn]
+        Resource = [module.kms_eks.key_arn]
       }
     ]
   })
@@ -131,9 +130,8 @@ resource "aws_iam_policy" "ebs_csi_kms" {
 }
 
 resource "aws_iam_role_policy_attachment" "ebs_csi_kms" {
-  count = var.enable_ebs_csi_kms_policy ? 1 : 0
 
-  policy_arn = aws_iam_policy.ebs_csi_kms[0].arn
+  policy_arn = aws_iam_policy.ebs_csi_kms.arn
   role       = aws_iam_role.ebs_csi_irsa.name
 }
 
@@ -142,7 +140,6 @@ resource "aws_iam_role_policy_attachment" "ebs_csi_kms" {
 # ------------------------------------------------------------------------------
 
 resource "aws_iam_role" "cluster_autoscaler_irsa" {
-  count = var.enable_cluster_autoscaler_iam ? 1 : 0
 
   name = "${local.cluster_name}-cluster-autoscaler-irsa"
 
@@ -176,7 +173,6 @@ resource "aws_iam_role" "cluster_autoscaler_irsa" {
 }
 
 resource "aws_iam_policy" "cluster_autoscaler" {
-  count = var.enable_cluster_autoscaler_iam ? 1 : 0
 
   name        = "${local.cluster_name}-cluster-autoscaler"
   description = "IAM policy for Cluster Autoscaler to manage EKS node groups"
@@ -222,8 +218,42 @@ resource "aws_iam_policy" "cluster_autoscaler" {
 }
 
 resource "aws_iam_role_policy_attachment" "cluster_autoscaler" {
-  count = var.enable_cluster_autoscaler_iam ? 1 : 0
 
-  policy_arn = aws_iam_policy.cluster_autoscaler[0].arn
-  role       = aws_iam_role.cluster_autoscaler_irsa[0].name
+  policy_arn = aws_iam_policy.cluster_autoscaler.arn
+  role       = aws_iam_role.cluster_autoscaler_irsa.name
+}
+
+# ------------------------------------------------------------------------------
+# AWS Load Balancer Controller IAM Role (IRSA)
+# ------------------------------------------------------------------------------
+resource "aws_iam_role" "aws_load_balancer_controller" {
+  name = "${local.cluster_name}-aws-load-balancer-controller-irsa"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = module.eks.oidc_provider_arn
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "${module.eks.oidc_provider}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller"
+            "${module.eks.oidc_provider}:aud" = "sts.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+
+  tags = merge(
+    local.merged_tags,
+    {
+      Name                           = "${local.cluster_name}-aws-load-balancer-controller-irsa"
+      "eks.amazonaws.com/component"  = "aws-load-balancer-controller"
+      "app.kubernetes.io/managed-by" = "terraform"
+    }
+  )
 }

@@ -10,23 +10,31 @@
 
 # PostgreSQL log group (for database logs)
 resource "aws_cloudwatch_log_group" "postgresql" {
-  name              = "/aws/rds/instance/${local.db_identifier}/postgresql"
+  name              = "/aws/rds/instance/${local.db_identifier_clean}/postgresql"
   retention_in_days = var.cloudwatch_retention_days
-  kms_key_id        = aws_kms_key.rds.arn
+  kms_key_id        = module.kms_rds.key_arn
 
   tags = merge(
     local.merged_tags,
     {
-      Name = "${local.db_identifier}-postgresql-logs"
+      Name = "${local.db_identifier_clean}-postgresql-logs"
     }
   )
+
+  # lifecycle {
+  #   prevent_destroy = true
+  # }
 }
 
 # Upgrade log group (for RDS version upgrades)
 resource "aws_cloudwatch_log_group" "upgrade" {
-  name              = "/aws/rds/instance/${local.db_identifier}/upgrade"
+  name              = "/aws/rds/instance/${local.db_identifier_clean}/upgrade"
   retention_in_days = var.cloudwatch_retention_days
-  kms_key_id        = aws_kms_key.rds.arn
+  kms_key_id        = module.kms_rds.key_arn
+
+  # lifecycle {
+  #   prevent_destroy = true
+  # }
 
   tags = merge(
     local.merged_tags,
@@ -281,7 +289,6 @@ resource "aws_cloudwatch_metric_alarm" "high_write_latency" {
 
 # Replica lag alarm (for Multi-AZ)
 resource "aws_cloudwatch_metric_alarm" "high_replica_lag" {
-  count = var.multi_az ? 1 : 0
 
   alarm_name          = "${local.db_identifier}-high-replica-lag"
   comparison_operator = "GreaterThanThreshold"

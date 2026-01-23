@@ -7,147 +7,106 @@
 # Multi-Tenant Identification
 # ========================================
 
-output "alb_identifier" {
-  description = "ALB identifier (multi-tenant aware)"
-  value       = local.alb_name
+output "alb_identifiers" {
+  description = "List of ALB identifiers (one per environment)"
+  value       = local.alb_names
 }
 
-output "customer_name" {
-  description = "Customer name (if applicable)"
-  value       = var.customer_name != "" ? var.customer_name : null
-}
-
-output "project_name" {
-  description = "Project name (if applicable)"
-  value       = var.project_name != "" ? var.project_name : null
+output "environments" {
+  description = "List of environments"
+  value       = local.environments
 }
 
 # ========================================
 # ALB Identification
 # ========================================
 
-output "alb_id" {
-  description = "ID of the Application Load Balancer"
-  value       = var.create ? aws_lb.this[0].id : null
+output "alb_ids" {
+  description = "List of Application Load Balancer IDs"
+  value       = aws_lb.this[*].id
 }
 
-output "alb_arn" {
-  description = "ARN of the Application Load Balancer"
-  value       = var.create ? aws_lb.this[0].arn : null
+output "alb_arns" {
+  description = "List of Application Load Balancer ARNs"
+  value       = aws_lb.this[*].arn
 }
 
-output "alb_arn_suffix" {
-  description = "ARN suffix for use with CloudWatch Metrics"
-  value       = var.create ? aws_lb.this[0].arn_suffix : null
+output "alb_arn_suffixes" {
+  description = "List of ARN suffixes for use with CloudWatch Metrics"
+  value       = aws_lb.this[*].arn_suffix
 }
 
-output "alb_name" {
-  description = "Name of the Application Load Balancer"
-  value       = var.create ? aws_lb.this[0].name : null
+output "alb_names" {
+  description = "List of Application Load Balancer names"
+  value       = aws_lb.this[*].name
 }
 
 # ========================================
 # ALB DNS Information
 # ========================================
 
-output "dns_name" {
-  description = "DNS name of the ALB (use with Route 53 alias records)"
-  value       = var.create ? aws_lb.this[0].dns_name : null
+output "dns_names" {
+  description = "List of DNS names of the ALBs (use with Route 53 alias records)"
+  value       = aws_lb.this[*].dns_name
 }
 
-output "zone_id" {
-  description = "Canonical hosted zone ID of the ALB (for Route 53 alias records)"
-  value       = var.create ? aws_lb.this[0].zone_id : null
+output "zone_ids" {
+  description = "List of canonical hosted zone IDs of the ALBs (for Route 53 alias records)"
+  value       = aws_lb.this[*].zone_id
+}
+
+output "subdomains" {
+  description = "List of subdomains for each environment"
+  value       = local.subdomains
 }
 
 # ========================================
 # ALB Configuration
 # ========================================
 
-output "alb_type" {
-  description = "Type of load balancer"
-  value       = var.create ? aws_lb.this[0].load_balancer_type : null
+output "alb_types" {
+  description = "List of load balancer types"
+  value       = aws_lb.this[*].load_balancer_type
 }
 
 output "vpc_id" {
   description = "VPC ID where the ALB is deployed (auto-discovered)"
-  value       = data.aws_vpc.main.id
-}
-
-output "vpc_cidr" {
-  description = "VPC CIDR block (auto-discovered)"
-  value       = data.aws_vpc.main.cidr_block
+  value       = var.vpc_id
 }
 
 output "subnet_ids" {
-  description = "List of subnet IDs attached to the ALB (auto-created)"
-  value       = aws_subnet.alb_public[*].id
+  description = "List of subnet IDs attached to all ALBs (shared subnets)"
+  value       = module.alb_subnet.subnet_ids
 }
 
 output "subnet_cidrs" {
   description = "List of subnet CIDR blocks"
-  value       = aws_subnet.alb_public[*].cidr_block
+  value       = module.alb_subnet.subnet_cidrs
 }
 
 output "availability_zones" {
   description = "Availability zones used for ALB subnets"
-  value       = aws_subnet.alb_public[*].availability_zone
+  value       = module.alb_subnet.availability_zones
 }
 
 output "security_group_ids" {
-  description = "List of security group IDs attached to the ALB (auto-created)"
-  value       = [aws_security_group.alb.id]
+  description = "List of security group IDs (one per environment)"
+  value       = module.security_group[*].security_group_id
 }
 
-output "eks_cluster_name" {
-  description = "EKS cluster name (if integrated)"
-  value       = local.eks_cluster_name
+output "route_table_ids" {
+  description = "Route table IDs for ALB public subnets"
+  value       = module.alb_subnet.route_table_ids
 }
 
-output "ip_address_type" {
-  description = "IP address type of the ALB"
-  value       = var.create ? aws_lb.this[0].ip_address_type : null
+output "ip_address_types" {
+  description = "List of IP address types of the ALBs"
+  value       = aws_lb.this[*].ip_address_type
 }
 
 output "is_internal" {
   description = "Whether the ALB is internal or internet-facing"
-  value       = var.create ? aws_lb.this[0].internal : null
-}
-
-# ========================================
-# Target Groups
-# ========================================
-
-output "target_group_arns" {
-  description = "Map of target group keys to ARNs"
-  value = {
-    for tg_key, tg in aws_lb_target_group.this :
-    tg_key => tg.arn
-  }
-}
-
-output "target_group_arn_suffixes" {
-  description = "Map of target group keys to ARN suffixes (for CloudWatch Metrics)"
-  value = {
-    for tg_key, tg in aws_lb_target_group.this :
-    tg_key => tg.arn_suffix
-  }
-}
-
-output "target_group_names" {
-  description = "Map of target group keys to names"
-  value = {
-    for tg_key, tg in aws_lb_target_group.this :
-    tg_key => tg.name
-  }
-}
-
-output "target_group_ids" {
-  description = "Map of target group keys to IDs"
-  value = {
-    for tg_key, tg in aws_lb_target_group.this :
-    tg_key => tg.id
-  }
+  value       = aws_lb.this[*].internal
 }
 
 # ========================================
@@ -156,22 +115,22 @@ output "target_group_ids" {
 
 output "http_listener_arn" {
   description = "ARN of the HTTP listener (null if not enabled)"
-  value       = local.http_listener_enabled ? aws_lb_listener.http[0].arn : null
+  value       = aws_lb_listener.http[*].arn
 }
 
 output "https_listener_arn" {
   description = "ARN of the HTTPS listener (null if not enabled)"
-  value       = local.https_listener_enabled ? aws_lb_listener.https[0].arn : null
+  value       = aws_lb_listener.https[*].arn
 }
 
 output "http_listener_id" {
   description = "ID of the HTTP listener (null if not enabled)"
-  value       = local.http_listener_enabled ? aws_lb_listener.http[0].id : null
+  value       = aws_lb_listener.http[*].id
 }
 
 output "https_listener_id" {
   description = "ID of the HTTPS listener (null if not enabled)"
-  value       = local.https_listener_enabled ? aws_lb_listener.https[0].id : null
+  value       = aws_lb_listener.https[*].id
 }
 
 # ========================================
@@ -213,19 +172,21 @@ output "access_logs_prefix" {
 
 output "cloudwatch_dashboard_name" {
   description = "CloudWatch dashboard name"
-  value       = aws_cloudwatch_dashboard.alb.dashboard_name
+  value       = aws_cloudwatch_dashboard.alb[*].dashboard_name
 }
 
 output "cloudwatch_alarms" {
   description = "CloudWatch alarm names"
-  value = {
-    high_target_5xx    = aws_cloudwatch_metric_alarm.high_target_5xx.alarm_name
-    high_alb_5xx       = aws_cloudwatch_metric_alarm.high_alb_5xx.alarm_name
-    high_response_time = aws_cloudwatch_metric_alarm.high_response_time.alarm_name
-    unhealthy_targets  = aws_cloudwatch_metric_alarm.unhealthy_targets.alarm_name
-    no_healthy_targets = aws_cloudwatch_metric_alarm.no_healthy_targets.alarm_name
-    high_tls_errors    = aws_cloudwatch_metric_alarm.high_tls_errors.alarm_name
-  }
+  value = [
+    for idx in range(length(local.environments)) : {
+      high_target_5xx    = aws_cloudwatch_metric_alarm.high_target_5xx[idx].alarm_name
+      high_alb_5xx       = aws_cloudwatch_metric_alarm.high_alb_5xx[idx].alarm_name
+      high_response_time = aws_cloudwatch_metric_alarm.high_response_time[idx].alarm_name
+      unhealthy_targets  = aws_cloudwatch_metric_alarm.unhealthy_targets[idx].alarm_name
+      no_healthy_targets = aws_cloudwatch_metric_alarm.no_healthy_targets[idx].alarm_name
+      high_tls_errors    = aws_cloudwatch_metric_alarm.high_tls_errors[idx].alarm_name
+    }
+  ]
 }
 
 # ========================================
@@ -234,58 +195,11 @@ output "cloudwatch_alarms" {
 
 output "route53_alias_config" {
   description = "Configuration for Route 53 alias record"
-  value = {
-    name                   = var.create ? aws_lb.this[0].dns_name : null
-    zone_id                = var.create ? aws_lb.this[0].zone_id : null
-    evaluate_target_health = true
-  }
-}
-
-# ========================================
-# Summary
-# ========================================
-
-output "summary" {
-  description = "Summary of the ALB configuration"
-  value = {
-    # Identification
-    alb_id         = var.create ? aws_lb.this[0].id : null
-    alb_arn        = var.create ? aws_lb.this[0].arn : null
-    alb_arn_suffix = var.create ? aws_lb.this[0].arn_suffix : null
-    alb_name       = var.create ? aws_lb.this[0].name : null
-
-    # DNS
-    dns_name = var.create ? aws_lb.this[0].dns_name : null
-    zone_id  = var.create ? aws_lb.this[0].zone_id : null
-
-    # Configuration
-    alb_type             = var.create ? aws_lb.this[0].load_balancer_type : null
-    is_internal          = var.create ? aws_lb.this[0].internal : null
-    ip_address_type      = var.create ? aws_lb.this[0].ip_address_type : null
-    vpc_id               = var.create ? aws_lb.this[0].vpc_id : null
-    subnet_count         = length(var.create ? aws_lb.this[0].subnets : null)
-    security_group_count = length(var.create ? aws_lb.this[0].security_groups : null)
-
-    # Target groups
-    target_group_count = length(aws_lb_target_group.this)
-    target_group_keys  = keys(aws_lb_target_group.this)
-
-    # Listeners
-    http_listener_enabled   = local.http_listener_enabled
-    https_listener_enabled  = local.https_listener_enabled
-    http_redirects_to_https = local.http_listener_enabled && var.http_listener.redirect_https
-
-    # Features
-    has_waf             = var.web_acl_arn != null
-    access_logs_enabled = var.enable_access_logs
-    deletion_protection = var.enable_deletion_protection
-    http2_enabled       = var.enable_http2
-
-    # Route 53 integration
-    route53_alias = {
-      name                   = var.create ? aws_lb.this[0].dns_name : null
-      zone_id                = var.create ? aws_lb.this[0].zone_id : null
+  value = [
+    for idx in range(length(var.environments)) : {
+      name                   = aws_lb.this[idx].dns_name
+      zone_id                = aws_lb.this[idx].zone_id
       evaluate_target_health = true
     }
-  }
+  ]
 }

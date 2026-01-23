@@ -1,146 +1,25 @@
-# ==============================================================================
-# Resource Creation Control
-# ==============================================================================
-
-variable "create" {
-  description = "Whether to create resources. Set to false to skip resource creation."
-  type        = bool
-  default     = true
-}
-
-
-#
+# --------------------------------------
 # Application Load Balancer Module - Variables
 # Purpose: HTTP/HTTPS load balancing with advanced routing
-#
-
-# ========================================
-# Multi-Tenant Context
-# ========================================
-
-variable "workspace" {
-  description = "Workspace name for VPC discovery (e.g., forge-platform)"
-  type        = string
-  default     = "forge-platform"
-}
-
-variable "customer_id" {
-  description = "UUID of the customer (empty for shared infrastructure)"
-  type        = string
-  default     = ""
-}
-
-variable "customer_name" {
-  description = "Customer name for resource naming (empty for shared infrastructure)"
-  type        = string
-  default     = ""
-}
-
-variable "project_name" {
-  description = "Project name for project-level isolation (empty for customer-level or shared)"
-  type        = string
-  default     = ""
-}
-
-variable "plan_tier" {
-  description = "Customer plan tier (e.g., basic, pro, enterprise, platform)"
-  type        = string
-  default     = ""
-}
+# --------------------------------------
 
 # ========================================
 # Environment
 # ========================================
 
-variable "environment" {
-  description = "Environment name (e.g., production, staging, development)"
-  type        = string
-
-  validation {
-    condition     = length(var.environment) > 0
-    error_message = "environment must not be empty"
-  }
+variable "environments" {
+  description = "List of environment names (e.g., [production, staging, development])"
+  type        = list(string)
+  default = []
 }
+
 
 # ========================================
-# ALB Configuration
+# Domain Configuration
 # ========================================
-
-variable "name" {
-  description = "Name for the ALB (optional, generated from customer context if not provided)"
+variable "domain_name" {
+  description = "Base domain name for subdomain generation (e.g., cronus-backend.com)"
   type        = string
-  default     = null
-}
-
-variable "load_balancer_type" {
-  description = "Type of load balancer (application or network)"
-  type        = string
-  default     = "application"
-
-  validation {
-    condition     = contains(["application", "network"], var.load_balancer_type)
-    error_message = "load_balancer_type must be application or network"
-  }
-}
-
-variable "internal" {
-  description = "Whether the ALB is internal (true) or internet-facing (false)"
-  type        = bool
-  default     = false
-}
-
-variable "ip_address_type" {
-  description = "IP address type: ipv4, dualstack, or dualstack-without-public-ipv4"
-  type        = string
-  default     = "ipv4"
-
-  validation {
-    condition     = contains(["ipv4", "dualstack", "dualstack-without-public-ipv4"], var.ip_address_type)
-    error_message = "ip_address_type must be ipv4, dualstack, or dualstack-without-public-ipv4"
-  }
-}
-
-# ========================================
-# Network Configuration (Auto-Discovery)
-# ========================================
-
-variable "alb_subnet_az_count" {
-  description = "Number of AZs for ALB subnets (minimum 2 for HA)"
-  type        = number
-  default     = 2
-
-  validation {
-    condition     = var.alb_subnet_az_count >= 2 && var.alb_subnet_az_count <= 3
-    error_message = "ALB subnet AZ count must be between 2 and 3."
-  }
-}
-
-variable "alb_subnet_newbits" {
-  description = "Number of bits to add to VPC CIDR for ALB subnets (e.g., 8 for /24 subnets from /16 VPC)"
-  type        = number
-  default     = 8
-
-  validation {
-    condition     = var.alb_subnet_newbits >= 4 && var.alb_subnet_newbits <= 16
-    error_message = "ALB subnet newbits must be between 4 and 16 for reasonable subnet sizes."
-  }
-}
-
-variable "alb_subnet_netnum_start" {
-  description = "Starting number for ALB subnet CIDR calculation"
-  type        = number
-  default     = 10
-
-  validation {
-    condition     = var.alb_subnet_netnum_start >= 0 && var.alb_subnet_netnum_start <= 250
-    error_message = "ALB subnet netnum_start must be between 0 and 250."
-  }
-}
-
-variable "eks_cluster_name" {
-  description = "EKS cluster name for security group integration (empty = auto-discover)"
-  type        = string
-  default     = ""
 }
 
 # ========================================
@@ -150,7 +29,7 @@ variable "eks_cluster_name" {
 variable "enable_deletion_protection" {
   description = "Enable deletion protection for the ALB"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "enable_http2" {
@@ -227,9 +106,9 @@ variable "xff_header_processing_mode" {
 # ========================================
 
 variable "enable_access_logs" {
-  description = "Enable access logging to S3"
+  description = "Enable access logging to S3 (requires S3 bucket configuration)"
   type        = bool
-  default     = true
+  default     = false # Disabled by default - enable after creating S3 bucket
 }
 
 variable "access_logs_bucket" {
@@ -330,8 +209,61 @@ variable "web_acl_arn" {
 # Tags
 # ========================================
 
-variable "tags" {
-  description = "Additional tags to apply to resources"
+variable "common_tags" {
+  description = "Common tags passed from root module (ManagedBy, Workspace, Region, DomainName, Customer, Project)"
   type        = map(string)
-  default     = {}
+}
+
+# ========================================
+# Naming
+# ========================================
+variable "common_prefix" {
+  description = "Common prefix for resource naming"
+  type        = string
+}
+
+# -=======================================
+# Network Context
+# ========================================
+variable "vpc_id" {
+  description = "The ID of the VPC where the ALB will be deployed"
+  type        = string
+}
+
+# ------------------------------------------------------------------------------
+# Subnet Configuration
+# ------------------------------------------------------------------------------
+
+variable "subnet_cidrs" {
+  description = "List of CIDR blocks for Client VPN subnets (from root locals)"
+  type        = list(string)
+
+  validation {
+    condition     = length(var.subnet_cidrs) > 0 && length(var.subnet_cidrs) <= 3
+    error_message = "subnet_cidrs must contain 1-3 CIDR blocks"
+  }
+}
+
+variable "availability_zones" {
+  description = "List of availability zones for Client VPN subnets (from root locals)"
+  type        = list(string)
+
+  validation {
+    condition     = length(var.availability_zones) > 0 && length(var.availability_zones) <= 3
+    error_message = "availability_zones must contain 1-3 zones"
+  }
+
+  validation {
+    condition     = length(var.availability_zones) == length(var.subnet_cidrs)
+    error_message = "availability_zones and subnet_cidrs must have the same length"
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Routing Configuration
+# ------------------------------------------------------------------------------
+
+variable "internet_gateway_id" {
+  description = "Internet Gateway ID for public subnet routing (ALB requires internet access)"
+  type        = string
 }

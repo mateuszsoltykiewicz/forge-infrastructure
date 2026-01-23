@@ -4,47 +4,38 @@
 #
 
 locals {
+
+  # Get current region from tags
+  current_region = var.common_tags["CurrentRegion"]
+
   # ========================================
   # Multi-Tenant Naming Convention
   # ========================================
 
-  # Determine cluster type based on customer_name and project_name
-  has_customer = var.customer_name != null && var.customer_name != ""
-  has_project  = var.project_name != null && var.project_name != ""
+  # If var.environments is empty set environment to tag value "Workspace" else set to var.environments
+  environments = length(var.environments) > 0 ? var.environments : [var.common_tags["Workspace"]]
 
-  # Generate ALB name based on multi-tenant context (max 32 characters):
-  # - Shared: forge-{environment}-alb
-  # - Customer: forge-{environment}-{customer}-alb
-  # - Project: forge-{environment}-{customer}-{project}-alb
-  alb_name = var.name != null ? var.name : substr(
-    local.has_project ? "forge-${var.environment}-${var.customer_name}-${var.project_name}-alb" :
-    local.has_customer ? "forge-${var.environment}-${var.customer_name}-alb" :
-    "forge-${var.environment}-alb",
-    0,
-    32
-  )
+  # Generate ALB names for each environment (max 32 characters):
+  # Pattern: {common_prefix}-{environment}-alb
+  # Example: san-cro-p-use1-production-alb
+  alb_names = [
+    for env in local.environments :
+    substr("alb-${env}-${var.common_prefix}", 0, 32)
+  ]
 
-  # Target group name prefix (max 32 characters, leave room for hash)
-  tg_name_prefix = substr(
-    local.has_project ? "forge-${var.environment}-${var.customer_name}-${var.project_name}" :
-    local.has_customer ? "forge-${var.environment}-${var.customer_name}" :
-    "forge-${var.environment}",
-    0,
-    32
-  )
+  # Target group name prefixes for each environment (max 25 characters)
+  tg_name_prefixes = [
+    for env in local.environments :
+    substr("tg-${env}-${var.common_prefix}", 0, 25)
+  ]
 
-  # ========================================
-  # Listener Configuration
-  # ========================================
-
-  # HTTP listener enabled
-  http_listener_enabled = var.http_listener.enabled
-
-  # HTTPS listener enabled
-  https_listener_enabled = var.https_listener.enabled
-
-  # HTTPS requires certificate
-  https_certificate_valid = !local.https_listener_enabled || var.https_listener.certificate_arn != null
+  # Subdomain for each environment
+  # production -> cronus-backend.com
+  # staging -> staging.cronus-backend.com
+  subdomains = [
+    for env in local.environments :
+    env == "Production" || env == "Shared" ? var.domain_name : "${env}.${var.domain_name}"
+  ]
 
   # ========================================
   # Access Logs Configuration
@@ -61,84 +52,20 @@ locals {
   } : null
 
   # ========================================
-  # Target Groups Validation
-  # ========================================
-
-  # Validate target group protocols
-  valid_protocols = ["HTTP", "HTTPS", "TCP", "TLS", "UDP", "TCP_UDP", "GENEVE"]
-
-  target_groups_protocol_valid = alltrue([
-    for tg_key, tg in var.target_groups :
-    contains(local.valid_protocols, tg.protocol)
-  ])
-
-  # Validate target types
-  valid_target_types = ["instance", "ip", "lambda", "alb"]
-
-  target_groups_type_valid = alltrue([
-    for tg_key, tg in var.target_groups :
-    contains(local.valid_target_types, tg.target_type)
-  ])
-
-  # ========================================
-  # Auto-Generated Comment
-  # ========================================
-
-  alb_type_description = var.internal ? "Internal" : "Internet-facing"
-
-  auto_comment = "${local.alb_type_description} Application Load Balancer for ${var.environment}"
-
-  # ========================================
   # Resource Tags
   # ========================================
 
-  # Base tags applied to all resources
-  base_tags = {
-    Module      = "alb"
-    ManagedBy   = "terraform"
-    Environment = var.environment
-    Workspace   = var.workspace
+  # Module-specific tags (only ALB-specific metadata)
+  module_tags = {
+    TerraformModule = "forge/aws/load-balancing/alb"
+    Module          = "ALB"
+    Family          = "LoadBalancing"
+    Visibility      = "internet-facing"
   }
 
-  # Multi-tenant tags
-  customer_tags = local.has_customer ? {
-    Customer = var.customer_name
-  } : {}
-
-  project_tags = local.has_project ? {
-    Project = var.project_name
-  } : {}
-
-  # Legacy tags for backward compatibility
-  legacy_tags = var.customer_id != "" ? {
-    CustomerId = var.customer_id
-    PlanTier   = var.plan_tier
-  } : {}
-
-  # ALB-specific tags
-  alb_tags = {
-    Name          = local.alb_name
-    Type          = var.load_balancer_type
-    Visibility    = var.internal ? "internal" : "internet-facing"
-    IPAddressType = var.ip_address_type
-  }
-
-  # Merge all tags
-  all_tags = merge(
-    local.base_tags,
-    local.customer_tags,
-    local.project_tags,
-    local.legacy_tags,
-    local.alb_tags,
-    var.tags
-  )
-
-  # Target group tags
-  target_group_base_tags = merge(
-    local.base_tags,
-    local.customer_tags,
-    local.project_tags,
-    local.legacy_tags,
-    var.tags
+  # Merge common tags from root + module-specific tags
+  merged_tags = merge(
+    var.common_tags,   # Common tags from root (ManagedBy, Workspace, Region, etc.)
+    local.module_tags, # Module-specific tags
   )
 }

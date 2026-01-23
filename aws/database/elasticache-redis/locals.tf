@@ -9,83 +9,57 @@ locals {
   # Replication Group Naming (Multi-Tenant)
   # ------------------------------------------------------------------------------
 
-  # Determine cluster ownership model
-  has_customer = var.customer_name != null && var.customer_name != ""
-  has_project  = var.project_name != null && var.project_name != ""
-
   # Multi-tenant cluster naming conventions:
   # 1. Shared (platform): forge-{environment}-redis
   # 2. Customer-dedicated: forge-{environment}-{customer}-redis
   # 3. Project-isolated: forge-{environment}-{customer}-{project}-redis
-  replication_group_id = var.replication_group_id_override != "" ? var.replication_group_id_override : (
-    local.has_project ? "forge-${var.environment}-${var.customer_name}-${var.project_name}-redis" :
-    local.has_customer ? "forge-${var.environment}-${var.customer_name}-redis" :
-    "forge-${var.environment}-redis"
-  )
+  replication_group_id = substr("redis-${var.common_prefix}", 0, 64)
+
+  sanitized_name_id = lower(replace(replace(local.replication_group_id, "/[^a-z0-9-]/", "-"), "/--+/", "-"))
+
+  # AWs region taken from tags
+  aws_region = lookup(var.common_tags, "Region", "unknown-region")
 
   # ------------------------------------------------------------------------------
-  # Base Resource Tags
+  # Resource Tags
   # ------------------------------------------------------------------------------
 
-  base_tags = {
-    Environment      = var.environment
-    ManagedBy        = "Terraform"
+  # Module-specific tags (only Redis-specific metadata)
+  module_tags = {
     TerraformModule  = "forge/aws/database/elasticache-redis"
-    Region           = var.aws_region
-    Workspace        = var.workspace
-    ReplicationGroup = local.replication_group_id
-    Engine           = "redis"
+    ReplicationGroup = local.sanitized_name_id
+    Engine           = "Redis"
     EngineVersion    = var.engine_version
+    Module           = "ElastiCache"
+    Family           = "Database"
   }
 
-  # ------------------------------------------------------------------------------
-  # Multi-Tenant Tags
-  # ------------------------------------------------------------------------------
-
-  # Multi-tenant tags (Customer + Project)
-  customer_tags = local.has_customer ? {
-    Customer = var.customer_name
-  } : {}
-
-  project_tags = local.has_project ? {
-    Project = var.project_name
-  } : {}
-
-  # Legacy tags for backward compatibility
-  legacy_tags = merge(
-    var.customer_id != "" ? { CustomerId = var.customer_id } : {},
-    var.plan_tier != "" ? { PlanTier = var.plan_tier } : {}
-  )
-
-  # Resource sharing tags
-  resource_sharing_tags = {
-    ResourceSharing = var.resource_sharing
-    SharedWith      = var.resource_sharing == "shared" ? join(",", var.shared_with_environments) : var.environment
-  }
-
-  # ------------------------------------------------------------------------------
-  # Merged Tags (Multi-Tenant)
-  # ------------------------------------------------------------------------------
-
+  # Merge common tags from root + module-specific tags
   merged_tags = merge(
-    local.base_tags,
-    local.customer_tags,
-    local.project_tags,
-    local.legacy_tags,
-    local.resource_sharing_tags,
-    var.tags
+    var.common_tags,  # Common tags from root (ManagedBy, Workspace, Region, etc.)
+    local.module_tags # Module-specific tags
   )
-
-  # ------------------------------------------------------------------------------
-  # Auth Token
-  # ------------------------------------------------------------------------------
-
-  # Generate auth token if enabled
-  auth_token = var.auth_token_enabled ? random_password.auth_token[0].result : null
 
   # ------------------------------------------------------------------------------
   # Parameter Group Naming
   # ------------------------------------------------------------------------------
 
-  parameter_group_name = var.create_parameter_group ? "${local.replication_group_id}-params" : null
+  sanitized_parameter_group_name = substr("param-group-${local.replication_group_id}", 0, 64)
+
+  # ----------------------------------------------------------------------------
+  # Subnet group naming
+  # ----------------------------------------------------------------------------
+  sanitized_subnet_group_name = substr("subnet-group-${local.replication_group_id}", 0, 64)
+
+  # ----------------------------------------------------------------------------
+  # SSM parameters naming for redis. Build from common prefix
+  # Replace with regex to allign with path like naming conventions
+  # ----------------------------------------------------------------------------
+  sanitized_ssm_name = lower(replace(replace(local.sanitized_name_id, "/[^a-z0-9._\\-\\/+=@ ]/", "-"), "/--+/", "-"))
+
+  # ------------------------------------------------------------------------------
+  # Sanitized cloudwatch monitoring groups build from sanitized name id and converted as a path like structure
+  # ------------------------------------------------------------------------------
+  sanitized_cloudwatch_log_group_name = "/aws/elasticache/redis/${local.sanitized_name_id}"
+
 }

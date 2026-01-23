@@ -1,89 +1,19 @@
 # ==============================================================================
-# Resource Creation Control
-# ==============================================================================
-
-variable "create" {
-  description = "Whether to create resources. Set to false to skip resource creation."
-  type        = bool
-  default     = true
-}
-
-
-# ==============================================================================
 # ElastiCache Redis Module - Input Variables
 # ==============================================================================
 # This module creates an Amazon ElastiCache Redis cluster.
 # Optimized for Forge's caching and session management requirements.
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# Customer Context (Required for Customer-Aware Naming)
-# ------------------------------------------------------------------------------
-
-variable "customer_id" {
-  description = "Customer identifier (empty for shared infrastructure)"
-  type        = string
-  default     = ""
-}
-
-variable "customer_name" {
-  description = "Customer name for resource naming (empty for shared infrastructure)"
-  type        = string
-  default     = ""
-}
-
-variable "project_name" {
-  description = "Project name within customer context (e.g., web-platform, mobile-app). Enables multiple Redis clusters per customer."
-  type        = string
-  default     = ""
-}
-
-variable "plan_tier" {
-  description = "Customer plan tier (e.g., basic, pro, advanced) for cost allocation"
-  type        = string
-  default     = ""
-}
-
-# ------------------------------------------------------------------------------
-# ElastiCache Configuration
-# ------------------------------------------------------------------------------
-
-variable "environment" {
-  description = "Environment name (e.g., production, staging, development)"
-  type        = string
-
-  validation {
-    condition     = contains(["production", "staging", "development"], var.environment)
-    error_message = "Environment must be one of: production, staging, or development."
-  }
-}
-
-variable "aws_region" {
-  description = "AWS region where the ElastiCache cluster will be deployed"
-  type        = string
-}
-
-variable "workspace" {
-  description = "Workspace identifier for VPC discovery (e.g., production, staging)"
-  type        = string
-
-  validation {
-    condition     = length(var.workspace) > 0
-    error_message = "Workspace must not be empty."
-  }
-}
-
-variable "replication_group_id_override" {
-  description = "Optional override for replication group ID (if empty, auto-generated)"
-  type        = string
-  default     = ""
-}
-
 variable "description" {
   description = "Description of the replication group"
   type        = string
   default     = "Forge Redis cluster for caching and session management"
 }
+
+# ------------------------------------------------------------------------------
+# ElastiCache Configuration
+# ------------------------------------------------------------------------------
 
 variable "engine_version" {
   description = "Redis engine version"
@@ -125,105 +55,8 @@ variable "port" {
 }
 
 # ------------------------------------------------------------------------------
-# Network Configuration (Auto-Discovery)
-# ------------------------------------------------------------------------------
-
-# VPC and subnets are auto-discovered by tags
-# No manual vpc_id or subnet_ids required!
-
-variable "redis_subnet_az_count" {
-  description = "Number of availability zones for Redis subnets (2-3)"
-  type        = number
-  default     = 3
-
-  validation {
-    condition     = var.redis_subnet_az_count >= 2 && var.redis_subnet_az_count <= 3
-    error_message = "Redis subnets must span 2 or 3 availability zones."
-  }
-}
-
-variable "redis_subnet_newbits" {
-  description = "Number of additional bits to add to VPC CIDR for Redis subnets (e.g., 8 for /24 from /16 VPC)"
-  type        = number
-  default     = 8
-
-  validation {
-    condition     = var.redis_subnet_newbits >= 1 && var.redis_subnet_newbits <= 12
-    error_message = "Subnet newbits must be between 1 and 12."
-  }
-}
-
-variable "redis_subnet_netnum_start" {
-  description = "Starting network number for Redis subnet CIDR calculation"
-  type        = number
-  default     = 100
-
-  validation {
-    condition     = var.redis_subnet_netnum_start >= 0
-    error_message = "Subnet netnum_start must be non-negative."
-  }
-}
-
-variable "eks_cluster_name" {
-  description = "EKS cluster name for security group integration (optional, auto-discovered if empty)"
-  type        = string
-  default     = ""
-}
-
-variable "preferred_cache_cluster_azs" {
-  description = "List of AZs in which the cache clusters will be created"
-  type        = list(string)
-  default     = []
-}
-
-# ------------------------------------------------------------------------------
-# High Availability Configuration
-# ------------------------------------------------------------------------------
-
-variable "multi_az_enabled" {
-  description = "Enable Multi-AZ with automatic failover"
-  type        = bool
-  default     = true
-}
-
-variable "automatic_failover_enabled" {
-  description = "Enable automatic failover (required for Multi-AZ)"
-  type        = bool
-  default     = true
-
-  validation {
-    condition     = !var.automatic_failover_enabled || var.num_cache_clusters >= 2
-    error_message = "Automatic failover requires at least 2 cache clusters."
-  }
-}
-
-# ------------------------------------------------------------------------------
 # Security Configuration
 # ------------------------------------------------------------------------------
-
-variable "at_rest_encryption_enabled" {
-  description = "Enable encryption at rest"
-  type        = bool
-  default     = true
-}
-
-variable "transit_encryption_enabled" {
-  description = "Enable encryption in transit (TLS)"
-  type        = bool
-  default     = true
-}
-
-variable "auth_token_enabled" {
-  description = "Enable Redis AUTH token for authentication"
-  type        = bool
-  default     = true
-}
-
-variable "enable_kms_key_rotation" {
-  description = "Enable automatic KMS key rotation"
-  type        = bool
-  default     = true
-}
 
 variable "kms_deletion_window_in_days" {
   description = "KMS key deletion window in days (7-30)"
@@ -283,22 +116,14 @@ variable "maintenance_window" {
   }
 }
 
-variable "auto_minor_version_upgrade" {
-  description = "Enable automatic minor version upgrades"
-  type        = bool
-  default     = true
-}
-
-variable "apply_immediately" {
-  description = "Apply changes immediately (if false, apply during maintenance window)"
-  type        = bool
-  default     = true
-}
+# ------------------------------------------------------------------------------
+# Monitoring Configuration
+# ------------------------------------------------------------------------------
 
 variable "cloudwatch_retention_days" {
   description = "CloudWatch Logs retention period in days (1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653)"
   type        = number
-  default     = 30
+  default     = 1
 
   validation {
     condition     = contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653], var.cloudwatch_retention_days)
@@ -309,12 +134,6 @@ variable "cloudwatch_retention_days" {
 # ------------------------------------------------------------------------------
 # Parameter Group Configuration
 # ------------------------------------------------------------------------------
-
-variable "create_parameter_group" {
-  description = "Create a custom parameter group (if false, uses default)"
-  type        = bool
-  default     = true
-}
 
 variable "parameter_group_family" {
   description = "Redis parameter group family (e.g., redis7)"
@@ -365,37 +184,50 @@ variable "log_delivery_configuration" {
 # Resource Tags
 # ------------------------------------------------------------------------------
 
-variable "tags" {
-  description = "Additional tags to apply to all ElastiCache resources"
+variable "common_tags" {
+  description = "Common tags passed from root module (ManagedBy, Workspace, Region, DomainName, Customer, Project)"
   type        = map(string)
   default     = {}
 }
 
+variable "common_prefix" {
+  description = "Common prefix for resource naming (e.g., forge-{environment}-{customer}-{project})"
+  type        = string
+}
+
 # ------------------------------------------------------------------------------
-# Resource Sharing Configuration
+# NEtwork COnfiguration
+# ------------------------------------------------------------------------------
+variable "vpc_id" {
+  description = "VPC ID where the ElastiCache cluster will be deployed"
+  type        = string
+}
+
+# ------------------------------------------------------------------------------
+# Subnet Configuration
 # ------------------------------------------------------------------------------
 
-variable "resource_sharing" {
-  description = "Resource sharing mode: 'dedicated' (single environment) or 'shared' (multiple environments)"
-  type        = string
-  default     = "dedicated"
+variable "subnet_cidrs" {
+  description = "List of CIDR blocks for Client VPN subnets (from root locals)"
+  type        = list(string)
 
   validation {
-    condition     = contains(["dedicated", "shared"], var.resource_sharing)
-    error_message = "Resource sharing must be 'dedicated' or 'shared'."
+    condition     = length(var.subnet_cidrs) > 0 && length(var.subnet_cidrs) <= 3
+    error_message = "subnet_cidrs must contain 1-3 CIDR blocks"
   }
 }
 
-variable "shared_with_environments" {
-  description = "List of environments sharing this Redis cluster (when resource_sharing = 'shared'). Example: ['staging', 'development']"
+variable "availability_zones" {
+  description = "List of availability zones for Client VPN subnets (from root locals)"
   type        = list(string)
-  default     = []
 
   validation {
-    condition = alltrue([
-      for env in var.shared_with_environments :
-      contains(["production", "staging", "development"], env)
-    ])
-    error_message = "Shared environments must be one of: production, staging, development."
+    condition     = length(var.availability_zones) > 0 && length(var.availability_zones) <= 3
+    error_message = "availability_zones must contain 1-3 zones"
+  }
+
+  validation {
+    condition     = length(var.availability_zones) == length(var.subnet_cidrs)
+    error_message = "availability_zones and subnet_cidrs must have the same length"
   }
 }
