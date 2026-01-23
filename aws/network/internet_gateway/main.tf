@@ -17,13 +17,11 @@
 # ------------------------------------------------------------------------------
 
 resource "aws_internet_gateway" "this" {
-  count = var.create ? 1 : 0
 
-  vpc_id = var.vpc_id
+  vpc_id = data.aws_vpc.selected.id
 
   tags = merge(
     local.merged_tags,
-    local.igw_tags,
     {
       Name = local.igw_name
     }
@@ -32,17 +30,4 @@ resource "aws_internet_gateway" "this" {
   lifecycle {
     create_before_destroy = true
   }
-}
-
-# ------------------------------------------------------------------------------
-# Default Route to Internet Gateway
-# ------------------------------------------------------------------------------
-# Adds 0.0.0.0/0 route to the public route table, enabling internet access
-# for all resources in public subnets.
-# ------------------------------------------------------------------------------
-
-resource "aws_route" "public_internet_access" {
-  route_table_id         = var.public_route_table_id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.this.id
 }

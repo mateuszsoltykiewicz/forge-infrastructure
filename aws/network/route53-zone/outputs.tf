@@ -149,7 +149,6 @@ output "summary" {
     vpc_association_count = var.zone_type == "private" ? (1 + length(aws_route53_zone_association.additional)) : 0
     dnssec_enabled        = var.enable_dnssec
     query_logging_enabled = var.enable_query_logging
-    architecture_type     = var.architecture_type
     environment           = var.environment
   }
 }

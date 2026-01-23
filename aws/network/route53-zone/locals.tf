@@ -6,15 +6,7 @@
 
 locals {
   # ------------------------------------------------------------------------------
-  # Multi-tenant Context
-  # ------------------------------------------------------------------------------
-
-  # Determine customer/project context
-  has_customer = var.customer_name != null && var.customer_name != ""
-  has_project  = var.project_name != null && var.project_name != ""
-
-  # ------------------------------------------------------------------------------
-  # Zone Naming
+  # Zone Naming (Pattern A)
   # ------------------------------------------------------------------------------
 
   # Zone name is the domain name
@@ -61,35 +53,19 @@ locals {
   )
 
   # ------------------------------------------------------------------------------
-  # Tagging Strategy
+  # Tagging Strategy (Pattern A)
   # ------------------------------------------------------------------------------
 
-  # Base tags applied to all resources
-  base_tags = {
-    Environment     = var.environment
-    ManagedBy       = "terraform"
-    TerraformModule = "network/route53-zone"
-    Region          = var.region
+  # Module-specific tags (only Route53 metadata)
+  module_tags = {
+    TerraformModule = "forge/aws/network/route53-zone"
     DomainName      = var.domain_name
     ZoneType        = var.zone_type
   }
 
-  # Customer-specific tags
-  customer_tags = local.has_customer ? {
-    CustomerName = var.customer_name
-    PlanTier     = var.plan_tier
-  } : {}
-
-  # Project-specific tags
-  project_tags = local.has_project ? {
-    ProjectName = var.project_name
-  } : {}
-
-  # Merge all tags
+  # Merge common_tags from root + module-specific tags
   merged_tags = merge(
-    local.base_tags,
-    local.customer_tags,
-    local.project_tags,
-    var.tags
+    var.common_tags,  # Common tags from root (includes Customer, Project, Environment, etc.)
+    local.module_tags # Module-specific tags
   )
 }

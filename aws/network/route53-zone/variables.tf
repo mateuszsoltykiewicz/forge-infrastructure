@@ -16,39 +16,23 @@ variable "create" {
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# Customer Context Variables
+# Pattern A Variables
 # ------------------------------------------------------------------------------
 
-variable "customer_name" {
-  description = "Name of the customer (used in resource naming, e.g., 'forge', 'acme-corp')"
+variable "common_prefix" {
+  description = "Common prefix for resource naming (e.g., forge-production-customer-project)"
   type        = string
 
   validation {
-    condition     = can(regex("^[a-z0-9-]+$", var.customer_name))
-    error_message = "customer_name must contain only lowercase letters, numbers, and hyphens"
+    condition     = length(var.common_prefix) > 0 && length(var.common_prefix) <= 63
+    error_message = "common_prefix must be between 1 and 63 characters"
   }
 }
 
-variable "project_name" {
-  description = "Project name for multi-tenant deployments"
-  type        = string
-  default     = null
-}
-
-variable "architecture_type" {
-  description = "Architecture type (shared, dedicated_local, dedicated_regional)"
-  type        = string
-  default     = "shared"
-}
-
-variable "plan_tier" {
-  description = "Customer plan tier: basic, pro, enterprise, or platform"
-  type        = string
-
-  validation {
-    condition     = contains(["basic", "pro", "enterprise", "platform"], var.plan_tier)
-    error_message = "plan_tier must be one of: basic, pro, enterprise, platform"
-  }
+variable "common_tags" {
+  description = "Common tags from root module (includes customer, project, environment metadata)"
+  type        = map(string)
+  default     = {}
 }
 
 # ------------------------------------------------------------------------------
@@ -189,14 +173,4 @@ variable "force_destroy" {
   description = "Force destroy the hosted zone even if it contains records (use with caution)"
   type        = bool
   default     = false
-}
-
-# ------------------------------------------------------------------------------
-# Tags
-# ------------------------------------------------------------------------------
-
-variable "tags" {
-  description = "Additional tags to apply to resources"
-  type        = map(string)
-  default     = {}
 }
