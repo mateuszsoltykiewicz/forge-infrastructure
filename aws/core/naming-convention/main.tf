@@ -3,7 +3,7 @@
 # ==============================================================================
 # Centralized naming sanitization for all AWS resources
 # Pattern: {customer_code}-{project_code}-{dr_code}-{region_code}
-# Example: san-cro-p-use1 (Sanofi-Cronus-primary-us-east-1)
+# Example: san-cro-p-use1 (customer-project-primary-us-east-1)
 # ==============================================================================
 
 

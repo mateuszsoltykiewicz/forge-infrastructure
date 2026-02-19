@@ -555,7 +555,7 @@ ping 10.0.1.10  # Example: Private EKS node IP
 **Test Private EKS Access**:
 ```bash
 # Update kubeconfig to use private endpoint
-aws eks update-kubeconfig --name forge-production-sanofi-cronus-eks --region us-east-1
+aws eks update-kubeconfig --name forge-production-customer-project-eks --region us-east-1
 
 # Test kubectl access (requires VPN connection)
 kubectl get nodes
@@ -565,7 +565,7 @@ kubectl get pods -A
 **Test Private RDS Access**:
 ```bash
 # Test PostgreSQL connection (requires psql client)
-psql -h forge-production-sanofi-cronus-rds.xxxxx.us-east-1.rds.amazonaws.com \
+psql -h forge-production-customer-project-rds.xxxxx.us-east-1.rds.amazonaws.com \
      -U forge_admin \
      -d forge_db
 ```
@@ -573,7 +573,7 @@ psql -h forge-production-sanofi-cronus-rds.xxxxx.us-east-1.rds.amazonaws.com \
 **Test Private Redis Access**:
 ```bash
 # Test Redis connection (requires redis-cli)
-redis-cli -h forge-production-sanofi-cronus-redis.xxxxx.cache.amazonaws.com \
+redis-cli -h forge-production-customer-project-redis.xxxxx.cache.amazonaws.com \
           -p 6379 \
           PING
 ```

@@ -18,7 +18,7 @@ variable "environments" {
 # Domain Configuration
 # ========================================
 variable "domain_name" {
-  description = "Base domain name for subdomain generation (e.g., cronus-backend.com)"
+  description = "Base domain name for subdomain generation (e.g., project-backend.com)"
   type        = string
 }
 

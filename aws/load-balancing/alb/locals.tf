@@ -30,8 +30,8 @@ locals {
   ]
 
   # Subdomain for each environment
-  # production -> cronus-backend.com
-  # staging -> staging.cronus-backend.com
+  # production -> project-backend.com
+  # staging -> staging.project-backend.com
   subdomains = [
     for env in local.environments :
     env == "Production" || env == "Shared" ? var.domain_name : "${env}.${var.domain_name}"

@@ -120,7 +120,7 @@ module "customer_vpc" {
   source = "./modules/network/vpc"
   
   # VPC Configuration
-  vpc_name   = "sanofi-us-east-1-vpc"
+  vpc_name   = "customer-us-east-1-vpc"
   cidr_block = "10.100.0.0/16"
   
   # Forge Infrastructure Context
@@ -130,7 +130,7 @@ module "customer_vpc" {
   
   # Customer Context (from Forge database)
   customer_id       = "550e8400-e29b-41d4-a716-446655440000"
-  customer_name     = "sanofi"
+  customer_name     = "customer"
   architecture_type = "dedicated_local"
   plan_tier         = "pro"
   
@@ -143,11 +143,11 @@ module "customer_vpc" {
 ```
 
 **Output**:
-- VPC Name: `sanofi-us-east-1-vpc`
+- VPC Name: `customer-us-east-1-vpc`
 - Tags Include:
   - `ManagedBy = "Forge"`
   - `CustomerId = "550e8400-e29b-41d4-a716-446655440000"`
-  - `CustomerName = "sanofi"`
+  - `CustomerName = "customer"`
   - `ArchitectureType = "dedicated_local"`
   - `PlanTier = "pro"`
 

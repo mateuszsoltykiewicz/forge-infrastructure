@@ -7,8 +7,8 @@
 # ------------------------------------------------------------------------------
 # ACM Certificate - SSL/TLS for ALB
 # ------------------------------------------------------------------------------
-# Domain: cronus-backend.com
-# SAN: *.cronus-backend.com
+# Domain: project-backend.com
+# SAN: *.project-backend.com
 # Validation: DNS via Route 53 (automatic)
 # ------------------------------------------------------------------------------
 
@@ -23,8 +23,8 @@ module "alb_certificate" {
   region      = var.current_region
 
   # Domain configuration
-  domain_name               = var.domain_name          # cronus-backend.com
-  subject_alternative_names = ["*.${var.domain_name}"] # *.cronus-backend.com
+  domain_name               = var.domain_name          # project-backend.com
+  subject_alternative_names = ["*.${var.domain_name}"] # *.project-backend.com
 
   # DNS validation via Route53 (automatic)
   validation_method      = "DNS"

@@ -95,8 +95,8 @@ variable "required_sg_tags" {
     {
       ManagedBy   = "Terraform"
       Region      = "us-east-1"
-      Customer    = "sanofi"
-      Project     = "cronus"
+      Customer    = "customer"
+      Project     = "project"
       Environment = "shared"
     }
   EOT

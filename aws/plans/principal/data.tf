@@ -18,7 +18,7 @@ data "aws_availability_zones" "available" {
 # Route 53 Hosted Zone (existing zone)
 # ------------------------------------------------------------------------------
 # Uses existing Route 53 hosted zone for domain management
-# Domain: cronus-backend.com
+# Domain: project-backend.com
 # ------------------------------------------------------------------------------
 
 data "aws_route53_zone" "main" {

@@ -238,8 +238,8 @@ variable "namespaces" {
     
     Example:
     {
-      "prod-cronus" = {
-        labels = { team = "cronus", tier = "production" }
+      "prod-project" = {
+        labels = { team = "project", tier = "production" }
         resource_quota = {
           hard = {
             "requests.cpu"    = "10"
@@ -248,7 +248,7 @@ variable "namespaces" {
           }
         }
         network_policy = {
-          ingress_from_namespaces = ["dev-cronus", "stag-cronus"]
+          ingress_from_namespaces = ["dev-project", "stag-project"]
           egress_allowed          = true
         }
       }

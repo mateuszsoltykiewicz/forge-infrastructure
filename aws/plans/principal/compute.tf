@@ -2,7 +2,7 @@
 # Compute Infrastructure - EKS Cluster
 # ==============================================================================
 # Single EKS cluster with multi-environment namespace isolation
-# Namespaces: prod-cronus, stag-cronus, dev-cronus
+# Namespaces: prod-project, stag-project, dev-project
 # ==============================================================================
 
 module "eks" {
@@ -65,7 +65,7 @@ module "eks" {
 # Deployment Architecture Summary
 # ==============================================================================
 # - VPC: Single shared VPC (10.0.0.0/16)
-# - EKS: Single cluster with namespaces (prod-cronus, stag-cronus, dev-cronus)
+# - EKS: Single cluster with namespaces (prod-project, stag-project, dev-project)
 # - ALB: 3 instances (prod.insighthealth.io, stag.insighthealth.io, dev.insighthealth.io)
 # - RDS: 1 production instance (shared by staging/dev)
 # - Redis: 1 production instance (shared by staging/dev)

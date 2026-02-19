@@ -27,8 +27,8 @@ resource "aws_vpc" "this" {
 # - Enable DNS support and hostnames for service discovery and AWS integrations
 # - Three isolation levels:
 #   1. Shared: workspace only (forge-{env}-vpc)
-#   2. Customer: workspace + customer (forge-{env}-cronus-vpc)
-#   3. Project: workspace + customer + project (forge-{env}-cronus-analytics-vpc)
+#   2. Customer: workspace + customer (forge-{env}-project-vpc)
+#   3. Project: workspace + customer + project (forge-{env}-project-analytics-vpc)
 # - Apply consistent tagging for auto-discovery by EKS, RDS, Redis, ALB modules
 # - Ensure CIDR blocks are unique and non-overlapping
 # ==============================================================================

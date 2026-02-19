@@ -3,7 +3,7 @@
 # ==============================================================================
 # Centralized AWS naming sanitization module
 # Pattern: {customer_code}-{project_code}-{dr_code}-{region_code}
-# Example: san-cro-p-use1 (Sanofi-Cronus-primary-us-east-1)
+# Example: san-cro-p-use1 (customer-project-primary-us-east-1)
 #
 # This module MUST be instantiated first as other modules depend on its outputs
 # ==============================================================================

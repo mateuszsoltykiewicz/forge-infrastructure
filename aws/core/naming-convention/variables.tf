@@ -3,7 +3,7 @@
 # ==============================================================================
 
 variable "customer_name" {
-  description = "Customer/tenant name (e.g., 'Sanofi'). Must be at least 3 characters for meaningful abbreviation."
+  description = "Customer/tenant name (e.g., 'customer'). Must be at least 3 characters for meaningful abbreviation."
   type        = string
 
   validation {
@@ -18,7 +18,7 @@ variable "customer_name" {
 }
 
 variable "project_name" {
-  description = "Project name (e.g., 'Cronus'). Must be at least 3 characters for meaningful abbreviation."
+  description = "Project name (e.g., 'project'). Must be at least 3 characters for meaningful abbreviation."
   type        = string
 
   validation {

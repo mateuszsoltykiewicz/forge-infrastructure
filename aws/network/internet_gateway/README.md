@@ -74,14 +74,14 @@ module "customer_igw" {
 
   # Customer context
   customer_id       = "550e8400-e29b-41d4-a716-446655440000"
-  customer_name     = "sanofi"
+  customer_name     = "customer"
   architecture_type = "dedicated_local"
   plan_tier         = "pro"
 }
 ```
 
 **Result:**
-- IGW Name: `sanofi-us-east-1-igw`
+- IGW Name: `customer-us-east-1-igw`
 - Default route: `0.0.0.0/0` → IGW in public route table
 - Tags: Base tags + customer tags (CustomerId, CustomerName, PlanTier)
 
@@ -120,7 +120,7 @@ module "customer_igw" {
 | Architecture | Example Name |
 |--------------|--------------|
 | Shared | `forge-production-vpc-igw` |
-| Dedicated Local | `sanofi-us-east-1-igw` |
+| Dedicated Local | `customer-us-east-1-igw` |
 | Dedicated Regional | `acme-us-west-2-igw` |
 
 ## Tagging Strategy
@@ -141,7 +141,7 @@ module "customer_igw" {
 ```hcl
 {
   CustomerId       = "550e8400-e29b-41d4-a716-446655440000"
-  CustomerName     = "sanofi"
+  CustomerName     = "customer"
   ArchitectureType = "dedicated_local"
   PlanTier         = "pro"
 }
@@ -272,7 +272,7 @@ Configured in root module backend, not in this module.
 
 **Example paths:**
 - Shared: `modules/network/internet_gateway/terraform.tfstate`
-- Customer: `customers/sanofi/network/internet_gateway/terraform.tfstate`
+- Customer: `customers/customer/network/internet_gateway/terraform.tfstate`
 
 ## Related Modules
 
