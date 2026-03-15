@@ -9,9 +9,8 @@
 # ------------------------------------------------------------------------------
 
 resource "aws_cloudwatch_dashboard" "alb" {
-  count = length(local.environments)
 
-  dashboard_name = "${local.alb_names[count.index]}-dashboard"
+  dashboard_name = "${local.alb_name}-dashboard"
 
   dashboard_body = jsonencode({
     widgets = [
@@ -133,9 +132,8 @@ resource "aws_cloudwatch_dashboard" "alb" {
 
 # High target 5XX errors
 resource "aws_cloudwatch_metric_alarm" "high_target_5xx" {
-  count = length(local.environments)
 
-  alarm_name          = "${local.alb_names[count.index]}-high-target-5xx"
+  alarm_name          = "${local.alb_name}-high-target-5xx"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "HTTPCode_Target_5XX_Count"
@@ -147,22 +145,18 @@ resource "aws_cloudwatch_metric_alarm" "high_target_5xx" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this[count.index].arn_suffix
+    LoadBalancer = aws_lb.this.arn_suffix
   }
 
   tags = merge(
-    local.merged_tags,
-    {
-      Environment = local.environments[count.index]
-    }
+    local.merged_tags
   )
 }
 
 # High ALB 5XX errors
 resource "aws_cloudwatch_metric_alarm" "high_alb_5xx" {
-  count = length(local.environments)
 
-  alarm_name          = "${local.alb_names[count.index]}-high-alb-5xx"
+  alarm_name          = "${local.alb_name}-high-alb-5xx"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "HTTPCode_ELB_5XX_Count"
@@ -174,22 +168,18 @@ resource "aws_cloudwatch_metric_alarm" "high_alb_5xx" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this[count.index].arn_suffix
+    LoadBalancer = aws_lb.this.arn_suffix
   }
 
   tags = merge(
-    local.merged_tags,
-    {
-      Environment = local.environments[count.index]
-    }
+    local.merged_tags
   )
 }
 
 # High response time
 resource "aws_cloudwatch_metric_alarm" "high_response_time" {
-  count = length(local.environments)
 
-  alarm_name          = "${local.alb_names[count.index]}-high-response-time"
+  alarm_name          = "${local.alb_name}-high-response-time"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "TargetResponseTime"
@@ -201,22 +191,18 @@ resource "aws_cloudwatch_metric_alarm" "high_response_time" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this[count.index].arn_suffix
+    LoadBalancer = aws_lb.this.arn_suffix
   }
 
   tags = merge(
-    local.merged_tags,
-    {
-      Environment = local.environments[count.index]
-    }
+    local.merged_tags
   )
 }
 
 # Unhealthy targets
 resource "aws_cloudwatch_metric_alarm" "unhealthy_targets" {
-  count = length(local.environments)
 
-  alarm_name          = "${local.alb_names[count.index]}-unhealthy-targets"
+  alarm_name          = "${local.alb_name}-unhealthy-targets"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "UnHealthyHostCount"
@@ -228,22 +214,18 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_targets" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this[count.index].arn_suffix
+    LoadBalancer = aws_lb.this.arn_suffix
   }
 
   tags = merge(
-    local.merged_tags,
-    {
-      Environment = local.environments[count.index]
-    }
+    local.merged_tags
   )
 }
 
 # No healthy targets (critical)
 resource "aws_cloudwatch_metric_alarm" "no_healthy_targets" {
-  count = length(local.environments)
 
-  alarm_name          = "${local.alb_names[count.index]}-no-healthy-targets"
+  alarm_name          = "${local.alb_name}-no-healthy-targets"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = 1
   metric_name         = "HealthyHostCount"
@@ -255,22 +237,18 @@ resource "aws_cloudwatch_metric_alarm" "no_healthy_targets" {
   treat_missing_data  = "breaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this[count.index].arn_suffix
+    LoadBalancer = aws_lb.this.arn_suffix
   }
 
   tags = merge(
-    local.merged_tags,
-    {
-      Environment = local.environments[count.index]
-    }
+    local.merged_tags
   )
 }
 
 # High TLS negotiation errors
 resource "aws_cloudwatch_metric_alarm" "high_tls_errors" {
-  count = length(var.environments)
 
-  alarm_name          = "${local.alb_names[count.index]}-high-tls-errors"
+  alarm_name          = "${local.alb_name}-high-tls-errors"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "TargetTLSNegotiationErrorCount"
@@ -282,13 +260,10 @@ resource "aws_cloudwatch_metric_alarm" "high_tls_errors" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.this[count.index].arn_suffix
+    LoadBalancer = aws_lb.this.arn_suffix
   }
 
   tags = merge(
-    local.merged_tags,
-    {
-      Environment = local.environments[count.index]
-    }
+    local.merged_tags
   )
 }

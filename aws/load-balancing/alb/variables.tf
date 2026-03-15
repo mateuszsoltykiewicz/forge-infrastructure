@@ -4,17 +4,6 @@
 # --------------------------------------
 
 # ========================================
-# Environment
-# ========================================
-
-variable "environments" {
-  description = "List of environment names (e.g., [production, staging, development])"
-  type        = list(string)
-  default = []
-}
-
-
-# ========================================
 # Domain Configuration
 # ========================================
 variable "domain_name" {

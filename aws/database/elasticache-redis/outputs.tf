@@ -157,6 +157,11 @@ output "cloudwatch_log_group_engine_log" {
   value       = aws_cloudwatch_log_group.redis_engine_log.name
 }
 
+output "cloudwatch_log_group_prefix" {
+  description = "CloudWatch log group prefix for subscription filters"
+  value       = local.sanitized_cloudwatch_log_group_name
+}
+
 output "cloudwatch_dashboard_name" {
   description = "CloudWatch dashboard name"
   value       = aws_cloudwatch_dashboard.redis.dashboard_name

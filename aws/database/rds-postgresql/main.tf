@@ -15,10 +15,6 @@ module "kms_rds" {
   common_prefix = var.common_prefix
   common_tags   = var.common_tags
 
-  # Environment context
-  environment = var.environment
-  region      = var.aws_region
-
   # KMS Key configuration
   key_purpose     = "rds-postgresql"
   key_description = "RDS PostgreSQL ${local.db_identifier_clean} encryption (storage, Performance Insights, logs, SSM)"
@@ -226,48 +222,58 @@ resource "aws_db_instance" "main" {
 # Store RDS endpoint in SSM
 resource "aws_ssm_parameter" "rds_endpoint" {
 
-  name  = "/${var.environment}/${local.db_identifier}/endpoint"
+  name  = "${local.ssm_parameter_prefix}/endpoint"
   type  = "String"
   value = aws_db_instance.main.endpoint
 
   tags = merge(
     local.merged_tags,
     {
-      Name = "${local.db_identifier}-endpoint"
+      Name = "${local.ssm_parameter_prefix}/endpoint"
     }
   )
 }
+
 
 # Store master password in SSM (SecureString with KMS encryption)
 resource "aws_ssm_parameter" "rds_master_password" {
 
-  name   = "/${var.environment}/${local.db_identifier}/master-password"
+  name   = "${local.ssm_parameter_prefix}/password"
   type   = "SecureString"
   key_id = module.kms_rds.key_arn
-  value = jsonencode({
-    username = var.master_username
-    password = random_password.master.result
-    engine   = "postgres"
-    host     = aws_db_instance.main.address
-    port     = var.port
-    dbname   = var.database_name
-  })
+  value  = random_password.master.result
 
   tags = merge(
     local.merged_tags,
     {
-      Name = "${local.db_identifier}-master-password"
+      Name = "${local.ssm_parameter_prefix}/password"
     }
   )
 }
 
+# Store username in SSM (SecureString with KMS encryption for consistency, even though it's not a secret)
+resource "aws_ssm_parameter" "rds_master_username" {
+
+  name   = "${local.ssm_parameter_prefix}/username"
+  type   = "SecureString"
+  key_id = module.kms_rds.key_arn
+  value  = var.master_username
+
+  tags = merge(
+    local.merged_tags,
+    {
+      Name = "${local.ssm_parameter_prefix}/username"
+    }
+  )
+}
 # ------------------------------------------------------------------------------
 # Enhanced Monitoring IAM Role
 # ------------------------------------------------------------------------------
 
 resource "aws_iam_role" "monitoring" {
 
-  name_prefix = substr("${local.db_identifier_clean}-mon-", 0, 48)
+  name = local.monitoring_role_name
+  path = local.path_prefix
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

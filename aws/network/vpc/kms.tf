@@ -12,10 +12,6 @@ module "kms_flow_logs" {
   common_prefix = var.common_prefix
   common_tags   = var.common_tags
 
-  # Environment context
-  environment = "shared" # VPC is shared across environments
-  region      = var.aws_region
-
   # KMS Key configuration
   key_purpose     = "vpc-flow-logs"
   key_description = "VPC Flow Logs ${local.vpc_name} encryption (CloudWatch Logs)"

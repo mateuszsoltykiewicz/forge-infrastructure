@@ -42,20 +42,6 @@ variable "environment" {
 }
 
 # ------------------------------------------------------------------------------
-# Lambda Configuration
-# ------------------------------------------------------------------------------
-
-variable "lambda_function_arn" {
-  description = "ARN of Lambda function for log transformation (from compute/lambda-log-transformer module)"
-  type        = string
-
-  validation {
-    condition     = can(regex("^arn:aws:lambda:[a-z0-9-]+:\\d+:function:.+$", var.lambda_function_arn))
-    error_message = "lambda_function_arn must be a valid Lambda ARN"
-  }
-}
-
-# ------------------------------------------------------------------------------
 # S3 Configuration
 # ------------------------------------------------------------------------------
 

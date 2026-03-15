@@ -6,7 +6,6 @@ module "eks_subnets" {
   availability_zones = var.availability_zones
 
   common_prefix = var.common_prefix
-  environment   = "shared"
   purpose       = "eks"
 
   common_tags = merge(
@@ -22,7 +21,6 @@ module "eks_subnets" {
   )
 
   # Private subnet routing
-  subnet_type             = "private"
   nat_gateway_ids         = var.nat_gateway_ids
   enable_s3_gateway_route = true # Enable S3 Gateway endpoint for ECR access
   s3_gateway_endpoint_id  = var.s3_gateway_endpoint_id

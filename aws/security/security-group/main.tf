@@ -7,8 +7,8 @@
 # ------------------------------------------------------------------------------
 
 resource "aws_security_group" "this" {
-  # Use either name or name_prefix (validated in locals)
-  name                   = local.common_name
+  # Use PascalCase name (Pattern A)
+  name                   = local.sg_name
   description            = local.security_group_description
   vpc_id                 = var.vpc_id
   revoke_rules_on_delete = var.revoke_rules_on_delete
@@ -16,7 +16,7 @@ resource "aws_security_group" "this" {
   tags = merge(
     local.merged_tags,
     {
-      Name = local.common_name
+      Name = local.sg_name
     }
   )
 

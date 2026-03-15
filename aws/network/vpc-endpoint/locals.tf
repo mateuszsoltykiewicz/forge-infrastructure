@@ -7,6 +7,16 @@
 locals {
 
   # ------------------------------------------------------------------------------
+  # Pattern A: Common Prefix Transformations
+  # ------------------------------------------------------------------------------
+
+  # PascalCase prefix for resource names (e.g., "AcmeForgeDevNetworkVpce")
+  pascal_prefix = join("", [for part in split("-", var.common_prefix) : title(part)])
+
+  # Path-like prefix (e.g., "/acme/forge/dev/network/")
+  path_prefix = "/${replace(var.common_prefix, "-", "/")}/"
+
+  # ------------------------------------------------------------------------------
   # Service Name Processing
   # ------------------------------------------------------------------------------
 
@@ -32,10 +42,15 @@ locals {
   full_service_name = var.service_name
 
   # ------------------------------------------------------------------------------
-  # Endpoint Naming (Multi-Tenant Pattern)
+  # Endpoint Naming (PascalCase Pattern)
   # ------------------------------------------------------------------------------
 
-  endpoint_name = "${var.common_prefix}-${local.service_short_name}-vpce"
+  # Convert service name to PascalCase for endpoint name
+  # e.g., "ecr-api" -> "EcrApi", "s3" -> "S3"
+  service_pascal = join("", [for part in split("-", local.service_short_name_sanitized) : title(part)])
+
+  # Endpoint name (PascalCase)
+  endpoint_name = "${local.pascal_prefix}${local.service_pascal}Vpce"
 
   # ------------------------------------------------------------------------------
   # Endpoint Type Validation

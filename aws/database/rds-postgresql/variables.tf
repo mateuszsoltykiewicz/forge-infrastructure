@@ -6,44 +6,8 @@
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# Firewall / Communication Tier
-# ------------------------------------------------------------------------------
-variable "firewall_tier" {
-  description = "Communication tier for resource naming and organization"
-  type        = string
-  default     = "RDS"
-}
-
-variable "firewall_type" {
-  description = "Firewall type for resource naming and organization"
-  type        = string
-  default     = "Slave"
-}
-
-# ------------------------------------------------------------------------------
 # RDS Instance Configuration
 # ------------------------------------------------------------------------------
-
-variable "environment" {
-  description = "Environment name (e.g., production, staging, development, shared)"
-  type        = string
-  default     = "shared"
-
-  validation {
-    condition     = contains(["production", "staging", "development", "shared"], var.environment)
-    error_message = "Environment must be one of: production, staging, development, or shared."
-  }
-
-  validation {
-    condition     = can(regex("^[a-z][a-z0-9-]{0,13}[a-z0-9]$", var.environment))
-    error_message = "environment must be 2-15 characters, start with letter, lowercase letters/numbers/hyphens only, no trailing hyphen"
-  }
-
-  validation {
-    condition     = length(var.environment) <= 15
-    error_message = "environment must not exceed 15 characters for RDS identifier compatibility"
-  }
-}
 
 variable "engine_version" {
   description = "PostgreSQL engine version"

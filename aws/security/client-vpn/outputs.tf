@@ -35,11 +35,6 @@ output "network_association_ids" {
   value       = aws_ec2_client_vpn_network_association.this[*].id
 }
 
-output "network_association_status" {
-  description = "Status of network associations"
-  value       = aws_ec2_client_vpn_network_association.this[*].status
-}
-
 # ------------------------------------------------------------------------------
 # Security Group Outputs
 # ------------------------------------------------------------------------------
@@ -110,4 +105,37 @@ output "summary" {
     network_associations  = length(aws_ec2_client_vpn_network_association.this)
     logging_enabled       = var.enable_connection_logs
   }
+}
+
+# ------------------------------------------------------------------------------
+# Dashboard Outputs
+# ------------------------------------------------------------------------------
+
+output "dashboard_name" {
+  description = "Name of CloudWatch Dashboard for VPN monitoring"
+  value       = aws_cloudwatch_dashboard.vpn.dashboard_name
+}
+
+output "dashboard_url" {
+  description = "URL to CloudWatch Dashboard in AWS Console"
+  value       = "https://console.aws.amazon.com/cloudwatch/home?region=${data.aws_region.current.id}#dashboards:name=${aws_cloudwatch_dashboard.vpn.dashboard_name}"
+}
+
+# ------------------------------------------------------------------------------
+# HIPAA Integration Outputs
+# ------------------------------------------------------------------------------
+
+output "hipaa_s3_export_enabled" {
+  description = "Whether VPN logs are exported to HIPAA-compliant S3 bucket"
+  value       = var.enable_hipaa_s3_export
+}
+
+output "subscription_filter_name" {
+  description = "Name of CloudWatch subscription filter for HIPAA S3 export"
+  value       = var.enable_hipaa_s3_export ? aws_cloudwatch_log_subscription_filter.vpn_to_kinesis[0].name : null
+}
+
+output "subscription_filter_id" {
+  description = "ID of CloudWatch subscription filter"
+  value       = var.enable_hipaa_s3_export ? aws_cloudwatch_log_subscription_filter.vpn_to_kinesis[0].id : null
 }

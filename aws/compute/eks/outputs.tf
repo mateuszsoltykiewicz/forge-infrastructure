@@ -101,6 +101,20 @@ output "eks_managed_node_groups_autoscaling_group_names" {
 }
 
 # ------------------------------------------------------------------------------
+# Monitoring Outputs
+# ------------------------------------------------------------------------------
+
+output "dashboard_name" {
+  description = "CloudWatch Dashboard name for EKS monitoring"
+  value       = aws_cloudwatch_dashboard.eks.dashboard_name
+}
+
+output "dashboard_arn" {
+  description = "CloudWatch Dashboard ARN for EKS monitoring"
+  value       = aws_cloudwatch_dashboard.eks.dashboard_arn
+}
+
+# ------------------------------------------------------------------------------
 # KMS Outputs
 # ------------------------------------------------------------------------------
 

@@ -17,3 +17,9 @@ data "aws_availability_zones" "available" {
     values = ["opt-in-not-required"]
   }
 }
+
+# ------------------------------------------------------------------------------
+# Current Region (for dashboard URL)
+# ------------------------------------------------------------------------------
+
+data "aws_region" "current" {}

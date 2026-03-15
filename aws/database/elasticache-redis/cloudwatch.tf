@@ -41,7 +41,7 @@ resource "aws_cloudwatch_log_group" "redis_engine_log" {
 # ------------------------------------------------------------------------------
 
 resource "aws_cloudwatch_dashboard" "redis" {
-  dashboard_name = "${local.sanitized_name_id}-dashboard"
+  dashboard_name = local.dashboard_name
 
   dashboard_body = jsonencode({
     widgets = [
@@ -54,9 +54,9 @@ resource "aws_cloudwatch_dashboard" "redis" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = local.aws_region
+          region  = data.aws_region.current.id
           title   = "CPU Utilization"
-          period  = 300
+          period  = 60
         }
       },
       # Memory Usage
@@ -69,9 +69,9 @@ resource "aws_cloudwatch_dashboard" "redis" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = local.aws_region
+          region  = data.aws_region.current.id
           title   = "Memory Usage"
-          period  = 300
+          period  = 60
         }
       },
       # Network I/O
@@ -84,9 +84,9 @@ resource "aws_cloudwatch_dashboard" "redis" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = local.aws_region
+          region  = data.aws_region.current.id
           title   = "Network I/O"
-          period  = 300
+          period  = 60
         }
       },
       # Connections
@@ -99,9 +99,9 @@ resource "aws_cloudwatch_dashboard" "redis" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = local.aws_region
+          region  = data.aws_region.current.id
           title   = "Connections"
-          period  = 300
+          period  = 60
         }
       },
       # Cache Hits/Misses
@@ -114,9 +114,9 @@ resource "aws_cloudwatch_dashboard" "redis" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = local.aws_region
+          region  = data.aws_region.current.id
           title   = "Cache Performance"
-          period  = 300
+          period  = 60
         }
       },
       # Evictions
@@ -128,9 +128,9 @@ resource "aws_cloudwatch_dashboard" "redis" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = local.aws_region
+          region  = data.aws_region.current.id
           title   = "Evictions"
-          period  = 300
+          period  = 60
         }
       },
       # Replication Lag (Multi-AZ)
@@ -142,9 +142,9 @@ resource "aws_cloudwatch_dashboard" "redis" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = local.aws_region
+          region  = data.aws_region.current.id
           title   = "Replication Lag"
-          period  = 300
+          period  = 60
         }
       }
     ]
@@ -157,7 +157,7 @@ resource "aws_cloudwatch_dashboard" "redis" {
 
 # High CPU Utilization
 resource "aws_cloudwatch_metric_alarm" "high_cpu" {
-  alarm_name          = "${local.sanitized_name_id}-high-cpu"
+  alarm_name          = local.alarm_high_cpu
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "CPUUtilization"
@@ -177,7 +177,7 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
 
 # High Memory Usage
 resource "aws_cloudwatch_metric_alarm" "high_memory" {
-  alarm_name          = "${local.sanitized_name_id}-high-memory"
+  alarm_name          = local.alarm_high_memory
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "DatabaseMemoryUsagePercentage"
@@ -197,7 +197,7 @@ resource "aws_cloudwatch_metric_alarm" "high_memory" {
 
 # High Evictions
 resource "aws_cloudwatch_metric_alarm" "high_evictions" {
-  alarm_name          = "${local.sanitized_name_id}-high-evictions"
+  alarm_name          = local.alarm_high_evictions
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "Evictions"
@@ -218,7 +218,7 @@ resource "aws_cloudwatch_metric_alarm" "high_evictions" {
 # High Replication Lag (Multi-AZ only)
 resource "aws_cloudwatch_metric_alarm" "high_replication_lag" {
 
-  alarm_name          = "${local.sanitized_name_id}-high-replication-lag"
+  alarm_name          = local.alarm_high_replication_lag
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "ReplicationLag"
@@ -238,7 +238,7 @@ resource "aws_cloudwatch_metric_alarm" "high_replication_lag" {
 
 # High Connection Count
 resource "aws_cloudwatch_metric_alarm" "high_connections" {
-  alarm_name          = "${local.sanitized_name_id}-high-connections"
+  alarm_name          = local.alarm_high_connections
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "CurrConnections"

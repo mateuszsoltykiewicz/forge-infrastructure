@@ -13,7 +13,7 @@ variable "vpc_id" {
 
   # check vpc-id with regex if matches vpc-xxxxxxxx or vpc-xxxxxxxxxxxxxxxxx
   validation {
-    condition = can(regex("^vpc-[0-9a-f]{8}([0-9a-f]{9})?$", var.vpc_id))
+    condition     = can(regex("^vpc-[0-9a-f]{8}([0-9a-f]{9})?$", var.vpc_id))
     error_message = "vpc_id must be a valid VPC ID (e.g., vpc-xxxxxxxx or vpc-xxxxxxxxxxxxxxxxx)"
   }
 }

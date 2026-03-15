@@ -12,7 +12,6 @@ module "client_vpn_subnets" {
   availability_zones = var.availability_zones
 
   common_prefix = var.common_prefix
-  environment   = "shared"
   purpose       = "vpn"
 
   common_tags = var.common_tags

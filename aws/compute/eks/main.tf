@@ -22,10 +22,6 @@ module "kms_eks" {
   common_prefix = var.common_prefix
   common_tags   = var.common_tags
 
-  # Environment context
-  environment = "production" # EKS runs in production environment
-  region      = var.aws_region
-
   # KMS Key configuration
   key_purpose     = "eks-cluster"
   key_description = "EKS cluster ${local.cluster_name} encryption (secrets, logs, EBS volumes)"
@@ -56,9 +52,8 @@ module "kms_eks" {
 # ------------------------------------------------------------------------------
 
 module "eks" {
-
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.31" # Stable version compatible with AWS provider 5.x
+  version = "20.24.0" # Using 20.24+ which fixes for_each issue with IAM policies
 
   cluster_name    = local.cluster_name
   cluster_version = "1.31"
@@ -70,7 +65,6 @@ module "eks" {
 
   # Security Groups (managed externally)
   create_cluster_security_group = false
-  create_node_security_group    = false
 
   # Cluster Security Group ID (managed externally)
   cluster_security_group_id = module.eks_security_group.security_group_id
@@ -98,7 +92,6 @@ module "eks" {
   enable_cluster_creator_admin_permissions = true
 
   # Dynamic Access Entries - additional users/roles beyond cluster creator
-  # NOTE: Cluster creator is automatically added with admin permissions via enable_cluster_creator_admin_permissions
   access_entries = var.additional_access_entries
 
   # EKS Managed Node Groups
@@ -171,14 +164,15 @@ module "eks" {
         "k8s.io/cluster-autoscaler/enabled"               = "true"
       }
 
-      # IAM
+      # IAM - Disable automatic CNI policy attachment (using IRSA instead)
+      iam_role_attach_cni_policy = false
       iam_role_additional_policies = {
         AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
       }
     }
   }
 
-  # EKS Add-ons
+  # EKS Add-ons (cluster_addons for v20.x)
   cluster_addons = {
     # CoreDNS
     coredns = {

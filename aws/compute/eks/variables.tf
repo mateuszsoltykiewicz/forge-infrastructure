@@ -12,21 +12,6 @@ variable "common_prefix" {
 }
 
 # ------------------------------------------------------------------------------
-# Firewall / Communication Tier
-# ------------------------------------------------------------------------------
-variable "firewall_tier" {
-  description = "Communication tier for resource naming and organization"
-  type        = string
-  default     = "EKS"
-}
-
-variable "firewall_type" {
-  description = "Firewall type for resource naming and organization"
-  type        = string
-  default     = "Master"
-}
-
-# ------------------------------------------------------------------------------
 # EKS Subnets Configuration
 # ------------------------------------------------------------------------------
 
@@ -309,4 +294,14 @@ variable "s3_gateway_endpoint_id" {
   description = "S3 Gateway VPC Endpoint ID for route table association (ECR image pulls)"
   type        = string
   default     = null
+}
+
+# ------------------------------------------------------------------------------
+# Monitoring Configuration
+# ------------------------------------------------------------------------------
+
+variable "notification_topic_arn" {
+  description = "SNS topic ARN for CloudWatch alarm notifications (leave empty to disable)"
+  type        = string
+  default     = ""
 }

@@ -27,26 +27,6 @@ resource "aws_subnet" "this" {
       VPCId = var.vpc_id
     }
   )
-
-  lifecycle {
-    # Validate subnet name length
-    precondition {
-      condition     = local.subnet_validations[count.index].length_ok
-      error_message = "Subnet name '${local.subnet_names[count.index]}' exceeds 255 characters (length: ${length(local.subnet_names[count.index])})"
-    }
-
-    # Validate subnet name pattern
-    precondition {
-      condition     = local.subnet_validations[count.index].pattern_ok
-      error_message = "Subnet name '${local.subnet_names[count.index]}' contains invalid characters"
-    }
-
-    # Validate no double hyphens
-    precondition {
-      condition     = local.subnet_validations[count.index].no_double_dash
-      error_message = "Subnet name '${local.subnet_names[count.index]}' contains double hyphens (--)"
-    }
-  }
 }
 
 # ------------------------------------------------------------------------------

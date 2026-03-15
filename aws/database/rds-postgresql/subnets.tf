@@ -18,8 +18,7 @@ module "rds_subnets" {
   availability_zones = var.availability_zones
 
   # Tagging
-  common_prefix = var.common_prefix
-  environment   = var.environment
+  common_prefix = local.pascal_prefix
   purpose       = "rds"
 
   common_tags = merge(

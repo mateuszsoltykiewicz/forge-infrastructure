@@ -13,13 +13,30 @@ module "rds_security_group" {
 
   vpc_id = data.aws_vpc.main.id
 
-  common_prefix = var.common_prefix
-  environment   = var.environment
+  common_prefix = local.pascal_prefix
 
-  firewall_tier = var.firewall_tier
-  firewall_type = var.firewall_type
-  purpose       = "rds-postgresql"
-  ports         = [var.port]
+  purpose = "rds-postgresql"
+  ports   = [var.port]
+
+  ingress_rules = [
+    {
+      from_port   = var.port
+      to_port     = var.port
+      protocol    = "tcp"
+      cidr_blocks = [data.aws_vpc.main.cidr_block]
+      description = "Allow PostgreSQL from VPC (EKS pods, VPN clients)"
+    }
+  ]
+
+  egress_rules = [
+    {
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = [data.aws_vpc.main.cidr_block]
+      description = "Allow HTTPS to VPC endpoints (CloudWatch, Performance Insights)"
+    }
+  ]
 
   common_tags = var.common_tags
 }

@@ -8,14 +8,44 @@
 module "eks_security_group" {
   source = "../../security/security-group"
 
-  common_prefix = var.common_prefix
+  common_prefix = local.pascal_prefix
   vpc_id        = data.aws_vpc.main.id
-  environment   = "shared"
-
-  firewall_tier = "EKSCluster"
-  firewall_type = var.firewall_type
   purpose       = "control-plane"
-  ports         = [443, 1025, 65535]
+  ports         = [443]
+
+  ingress_rules = [
+    {
+      from_port                = 443
+      to_port                  = 443
+      protocol                 = "tcp"
+      source_security_group_id = module.nodes_security_group.security_group_id
+      description              = "Allow Kubernetes API access from worker nodes"
+    }
+  ]
+
+  egress_rules = [
+    {
+      from_port                = 443
+      to_port                  = 443
+      protocol                 = "tcp"
+      source_security_group_id = module.nodes_security_group.security_group_id
+      description              = "Allow HTTPS to worker nodes (webhooks, admission controllers)"
+    },
+    {
+      from_port                = 10250
+      to_port                  = 10250
+      protocol                 = "tcp"
+      source_security_group_id = module.nodes_security_group.security_group_id
+      description              = "Allow kubelet communication to worker nodes"
+    },
+    {
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "Allow HTTPS to internet (ECR, AWS APIs, container registries)"
+    }
+  ]
 
   common_tags = var.common_tags
 }
@@ -23,16 +53,11 @@ module "eks_security_group" {
 module "nodes_security_group" {
   source = "../../security/security-group"
 
-  common_prefix = var.common_prefix
+  common_prefix = local.pascal_prefix
   vpc_id        = data.aws_vpc.main.id
-  environment   = "shared"
-
-  firewall_tier = "EKSNodes"
-  firewall_type = var.firewall_type
   purpose       = "worker-nodes"
   ports         = [443, 10250, 53]
 
-  # Only self-referencing and VPC CIDR rules (no circular dependencies)
   ingress_rules = [
     {
       from_port   = 0
@@ -40,18 +65,79 @@ module "nodes_security_group" {
       protocol    = "-1"
       self        = true
       description = "Node to node all traffic (CNI, CoreDNS, inter-pod)"
+    },
+    {
+      from_port                = 443
+      to_port                  = 443
+      protocol                 = "tcp"
+      source_security_group_id = module.eks_security_group.security_group_id
+      description              = "Allow HTTPS from control plane (webhooks)"
+    },
+    {
+      from_port                = 10250
+      to_port                  = 10250
+      protocol                 = "tcp"
+      source_security_group_id = module.eks_security_group.security_group_id
+      description              = "Allow kubelet API from control plane"
     }
   ]
 
-  # NOTE: Egress rules are automatically managed by EKS module's recommended rules
-  # (node_security_group_enable_recommended_rules = true by default in terraform-aws-modules/eks)
-  # The EKS module adds ALL necessary egress rules including:
-  # - UDP 53 (DNS to VPC resolver)
-  # - TCP 443 (HTTPS for registries, APIs)
-  # - TCP 80 (HTTP for package managers)
-  # - All protocol egress to 0.0.0.0/0 (full internet access via NAT Gateway)
-  # DO NOT add egress_rules here to prevent ResourceConflictException
-  egress_rules = []
+  egress_rules = [
+    # Control Plane communication
+    {
+      from_port                = 443
+      to_port                  = 443
+      protocol                 = "tcp"
+      source_security_group_id = module.eks_security_group.security_group_id
+      description              = "Allow HTTPS to EKS control plane"
+    },
+    # Internet access for external services
+    {
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "Allow HTTPS to internet (ECR, Docker Hub, external APIs)"
+    },
+    {
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "Allow HTTP to internet (package managers, repositories)"
+    },
+    # DNS resolution
+    {
+      from_port   = 53
+      to_port     = 53
+      protocol    = "udp"
+      cidr_blocks = [data.aws_vpc.main.cidr_block]
+      description = "Allow DNS queries to VPC resolver"
+    },
+    # Database access
+    {
+      from_port   = 5432
+      to_port     = 5432
+      protocol    = "tcp"
+      cidr_blocks = [data.aws_vpc.main.cidr_block]
+      description = "Allow PostgreSQL to RDS"
+    },
+    {
+      from_port   = 6379
+      to_port     = 6379
+      protocol    = "tcp"
+      cidr_blocks = [data.aws_vpc.main.cidr_block]
+      description = "Allow Redis to ElastiCache"
+    },
+    # Node to node communication
+    {
+      from_port   = 0
+      to_port     = 65535
+      protocol    = "-1"
+      self        = true
+      description = "Allow all traffic to other worker nodes (CNI, pod-to-pod)"
+    }
+  ]
 
   common_tags = merge(
     var.common_tags,

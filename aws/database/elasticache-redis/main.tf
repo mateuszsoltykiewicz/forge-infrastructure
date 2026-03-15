@@ -13,8 +13,7 @@ module "kms_redis" {
 
   # Pattern A variables
   common_prefix = var.common_prefix
-
-  common_tags   = local.merged_tags
+  common_tags   = var.common_tags
 
   # KMS Key configuration
   key_purpose     = "Redis"
@@ -28,7 +27,7 @@ module "kms_redis" {
   # Service principals - Redis, CloudWatch Logs, SSM
   key_service_roles = [
     "elasticache.amazonaws.com",
-    "logs.${local.aws_region}.amazonaws.com",
+    "logs.${data.aws_region.current.id}.amazonaws.com",
     "ssm.amazonaws.com"
   ]
 
@@ -122,11 +121,11 @@ resource "aws_elasticache_replication_group" "main" {
   multi_az_enabled           = true
 
   # Network Configuration
-  subnet_group_name           = aws_elasticache_subnet_group.main.name
-  security_group_ids          = [module.redis_security_group.security_group_id]
+  subnet_group_name  = aws_elasticache_subnet_group.main.name
+  security_group_ids = [module.redis_security_group.security_group_id]
 
-  # make it dependent on var.availability_zones
-  preferred_cache_cluster_azs = var.availability_zones
+  # AZ selection is automatic based on subnet_group and num_cache_clusters
+  # preferred_cache_cluster_azs removed - conflicts when num doesn't match AZ count
 
   # Security Configuration
   at_rest_encryption_enabled = true
@@ -189,7 +188,7 @@ resource "aws_elasticache_replication_group" "main" {
 # Auth token (SecureString)
 resource "aws_ssm_parameter" "redis_auth_token" {
 
-  name        = "/${local.sanitized_ssm_name}/auth-token"
+  name        = "${local.ssm_parameter_prefix}/auth-token"
   description = "Redis AUTH token for ${local.replication_group_id}"
   type        = "SecureString"
   value       = random_password.auth_token.result
@@ -198,7 +197,7 @@ resource "aws_ssm_parameter" "redis_auth_token" {
   tags = merge(
     local.merged_tags,
     {
-      Name = "/${local.sanitized_ssm_name}/auth-token"
+      Name = "${local.ssm_parameter_prefix}/auth-token"
     }
   )
 }

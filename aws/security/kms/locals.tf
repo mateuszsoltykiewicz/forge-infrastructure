@@ -11,11 +11,11 @@ locals {
   generated_alias_name = "kms-${var.key_purpose}-${var.common_prefix}"
 
   # sanitize from generated_alias_name to be path like (lowercase, no spaces, max 63 chars)
-  alias_name_sanitized_step1  = lower(replace(replace(local.generated_alias_name, "/[^a-z0-9._\\-\\/+=@ ]/", "-"), "/--+/", "-"))
-  alias_name_sanitized        = substr(local.alias_name_sanitized_step1, 0, 63)
-  
+  alias_name_sanitized_step1 = lower(replace(replace(local.generated_alias_name, "/[^a-z0-9._\\-\\/+=@ ]/", "-"), "/--+/", "-"))
+  alias_name_sanitized       = substr(local.alias_name_sanitized_step1, 0, 63)
+
   # Final alias name
-  alias_name                  = local.alias_name_sanitized
+  alias_name = local.alias_name_sanitized
 
   # ------------------------------------------------------------------------------
   # Tagging Strategy (Pattern A)

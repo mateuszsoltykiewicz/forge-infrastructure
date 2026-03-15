@@ -3,6 +3,7 @@
 # ==============================================================================
 # Uses intelligent CIDR calculation to prevent subnet conflicts
 # Public subnets with Internet Gateway for ALB internet-facing deployment
+# Tagged for AWS Load Balancer Controller discovery
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -20,11 +21,16 @@ module "alb_subnet" {
 
   # Tagging
   common_prefix = var.common_prefix
-  purpose       = "ALB"
+  purpose       = "alb"
   tier          = "Public"
 
-  # Tags configuration
-  common_tags = local.merged_tags
+  # Tags configuration - AWS Load Balancer Controller discovery
+  common_tags = merge(
+    local.merged_tags,
+    {
+      "kubernetes.io/role/elb" = "1" # Required for AWS LB Controller to discover public subnets for internet-facing ALB/NLB
+    }
+  )
 
   # Public subnet routing
   internet_gateway_id = var.internet_gateway_id

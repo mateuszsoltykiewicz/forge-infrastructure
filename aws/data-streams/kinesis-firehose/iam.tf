@@ -8,15 +8,15 @@
 
 resource "aws_iam_role" "firehose" {
   name               = local.firehose_role_name
+  path               = "/data-streams/"
   description        = "Service role for Kinesis Firehose delivery streams"
   assume_role_policy = data.aws_iam_policy_document.firehose_assume_role.json
 
   tags = merge(
-    var.common_tags,
+    local.merged_tags,
     {
-      Name        = local.firehose_role_name
-      Component   = "Kinesis Firehose IAM Role"
-      Environment = var.environment
+      Name      = local.firehose_role_name
+      Component = "Kinesis Firehose IAM Role"
     }
   )
 }
@@ -77,34 +77,8 @@ data "aws_iam_policy_document" "firehose_s3" {
     condition {
       test     = "StringEquals"
       variable = "kms:ViaService"
-      values   = ["s3.${data.aws_region.current.name}.amazonaws.com"]
+      values   = ["s3.${data.aws_region.current.id}.amazonaws.com"]
     }
-  }
-}
-
-# ------------------------------------------------------------------------------
-# IAM Policy: Lambda Invoke Access
-# ------------------------------------------------------------------------------
-
-resource "aws_iam_role_policy" "firehose_lambda" {
-  name   = "${local.firehose_role_name}-lambda-invoke"
-  role   = aws_iam_role.firehose.name
-  policy = data.aws_iam_policy_document.firehose_lambda.json
-}
-
-data "aws_iam_policy_document" "firehose_lambda" {
-  statement {
-    effect = "Allow"
-
-    actions = [
-      "lambda:InvokeFunction",
-      "lambda:GetFunctionConfiguration"
-    ]
-
-    resources = [
-      var.lambda_function_arn,
-      "${var.lambda_function_arn}:*" # Include versions/aliases
-    ]
   }
 }
 
@@ -129,7 +103,7 @@ data "aws_iam_policy_document" "firehose_logs" {
     ]
 
     resources = [
-      "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/kinesisfirehose/${var.common_prefix}-*"
+      "arn:aws:logs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:log-group:/aws/kinesisfirehose/${var.common_prefix}-*"
     ]
   }
 }

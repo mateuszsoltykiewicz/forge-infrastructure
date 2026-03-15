@@ -11,13 +11,11 @@
 variable "customer_name" {
   description = "Customer name for resource naming (null for shared infrastructure)"
   type        = string
-  default     = null
 }
 
 variable "project_name" {
   description = "Project name for resource naming (null for customer or shared infrastructure)"
   type        = string
-  default     = null
 }
 
 # ------------------------------------------------------------------------------
@@ -111,14 +109,19 @@ variable "redis_num_cache_nodes" {
 }
 
 # ------------------------------------------------------------------------------
-# DR Tags
+# Tags
 # ------------------------------------------------------------------------------
+
+variable "additional_tags" {
+  description = "Additional tags to apply to all resources"
+  type        = map(string)
+  default     = {}
+}
 
 variable "dr_tags" {
   description = "Additional tags for Disaster Recovery environment"
   type        = map(string)
   default     = {}
-
 }
 
 # ------------------------------------------------------------------------------
@@ -234,76 +237,56 @@ variable "primary_aws_region" {
   description = "AWS region for deployment (e.g., 'us-east-1')"
   type        = string
   default     = "us-east-2"
-
-  # Validate with regex if region name matches AWS region pattern
-  validation {
-    condition     = can(regex("^[a-z]{2}-[a-z]+-\\d{1}$", var.primary_aws_region))
-    error_message = "Primary AWS region must be a valid AWS region format (e.g., 'us-east-1')."
-  }
 }
 
 variable "secondary_aws_region" {
   description = "Secondary AWS region for Disaster Recovery (e.g., 'us-west-2')"
   type        = string
   default     = "us-west-2"
-
-  # Validate with regex if region name matches AWS region pattern
-  validation {
-    condition     = can(regex("^[a-z]{2}-[a-z]+-\\d{1}$", var.secondary_aws_region))
-    error_message = "Secondary AWS region must be a valid AWS region format (e.g., 'us-west-2')."
-  }
 }
 
 variable "current_region" {
   description = "Current AWS region for this deployment (set to primary or secondary region)"
   type        = string
-  default = "us-east-2"
 
-  # Validate if current region variable matches either primary or secondary region
   validation {
     condition     = contains([var.primary_aws_region, var.secondary_aws_region], var.current_region)
     error_message = "Current region must be either the primary or secondary AWS region."
   }
-
-  # Validate with regex if region name matches AWS region pattern
-  validation {
-    condition     = can(regex("^[a-z]{2}-[a-z]+-\\d{1}$", var.current_region))
-    error_message = "Current AWS region must be a valid AWS region format (e.g., 'us-east-1' or 'us-west-2')."
-  }
 }
 
 # ------------------------------------------------------------------------------
-# Active environments configuration
+# Environments Configuration
 # ------------------------------------------------------------------------------
-variable "environments" {
-  description = "List of active environments to deploy (e.g., ['production', 'staging', 'development', 'shared'])"
-  type        = list(string)
-  nullable    = true
+variable "environment" {
+  description = "List of environments to deploy (e.g., ['production', 'staging', 'development', 'shared'])"
+  type        = string
+  default     = "shared"
 }
 
-# ---------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# Disaster Recovery Type
+# ------------------------------------------------------------------------------
+variable "dr_type" {
+  description = "Disaster Recovery type (e.g., 'WarmStandby')"
+  type        = string
+  default     = "WarmStandby"
+}
+
+# ------------------------------------------------------------------------------
 # Workspace tenant name
-# ---------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 variable "workspace" {
-  description = "Workspace tenant name (for multi-tenant setups) to differentiate security groups"
+  description = "Workspace tenant name (e.g., 'Shared')"
   type        = string
   default     = "Shared"
 }
 
 # ------------------------------------------------------------------------------
-# DR Tenant Name
+# Disaster Recovery Tenant Name
 # ------------------------------------------------------------------------------
 variable "dr_tenant" {
-  description = "DR Tenant Name (for multi-tenant setups) to differentiate security groups in DR scenarios"
+  description = "Disaster Recovery tenant name (e.g., 'Primary')"
   type        = string
   default     = "Primary"
-}
-
-# ------------------------------------------------------------------------------
-# DR Type
-# ------------------------------------------------------------------------------
-variable "dr_type" {
-  description = "Disaster Recovery Type (e.g.,'WarmStandby')"
-  type        = string
-  default     = "WarmStandby"
 }

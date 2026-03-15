@@ -29,12 +29,12 @@ output "ports" {
 
 output "ingress_rule_count" {
   description = "Number of ingress rules created"
-  value       = length(try(var.ingress_rules), [])
+  value       = length(try(var.ingress_rules, []))
 }
 
 output "egress_rule_count" {
   description = "Number of egress rules created"
-  value       = length(try(var.egress_rules), [])
+  value       = length(try(var.egress_rules, []))
 }
 
 output "ingress_rule_ids" {

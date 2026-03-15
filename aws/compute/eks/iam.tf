@@ -12,7 +12,8 @@
 # ------------------------------------------------------------------------------
 
 resource "aws_iam_role" "vpc_cni_irsa" {
-  name = "${local.cluster_name}-vpc-cni-irsa"
+  name = local.vpc_cni_role_name
+  path = "/${local.path_prefix}/"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -36,7 +37,7 @@ resource "aws_iam_role" "vpc_cni_irsa" {
   tags = merge(
     local.merged_tags,
     {
-      Name                           = "${local.cluster_name}-vpc-cni-irsa"
+      Name                           = local.vpc_cni_role_name
       "eks.amazonaws.com/component"  = "vpc-cni"
       "app.kubernetes.io/managed-by" = "terraform"
     }
@@ -53,7 +54,8 @@ resource "aws_iam_role_policy_attachment" "vpc_cni_irsa" {
 # ------------------------------------------------------------------------------
 
 resource "aws_iam_role" "ebs_csi_irsa" {
-  name = "${local.cluster_name}-ebs-csi-irsa"
+  name = local.ebs_csi_role_name
+  path = "/${local.path_prefix}/"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -77,7 +79,7 @@ resource "aws_iam_role" "ebs_csi_irsa" {
   tags = merge(
     local.merged_tags,
     {
-      Name                           = "${local.cluster_name}-ebs-csi-irsa"
+      Name                           = local.ebs_csi_role_name
       "eks.amazonaws.com/component"  = "ebs-csi-driver"
       "app.kubernetes.io/managed-by" = "terraform"
     }
@@ -92,7 +94,8 @@ resource "aws_iam_role_policy_attachment" "ebs_csi_irsa" {
 # Optional: Add KMS permissions if using encrypted volumes
 resource "aws_iam_policy" "ebs_csi_kms" {
 
-  name        = "${local.cluster_name}-ebs-csi-kms"
+  name        = local.ebs_csi_kms_policy_name
+  path        = "/${local.path_prefix}/"
   description = "Additional KMS permissions for EBS CSI driver"
 
   policy = jsonencode({
@@ -141,7 +144,8 @@ resource "aws_iam_role_policy_attachment" "ebs_csi_kms" {
 
 resource "aws_iam_role" "cluster_autoscaler_irsa" {
 
-  name = "${local.cluster_name}-cluster-autoscaler-irsa"
+  name = local.cluster_autoscaler_role_name
+  path = "/${local.path_prefix}/"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -165,7 +169,7 @@ resource "aws_iam_role" "cluster_autoscaler_irsa" {
   tags = merge(
     local.merged_tags,
     {
-      Name                           = "${local.cluster_name}-cluster-autoscaler-irsa"
+      Name                           = local.cluster_autoscaler_role_name
       "eks.amazonaws.com/component"  = "cluster-autoscaler"
       "app.kubernetes.io/managed-by" = "terraform"
     }
@@ -174,7 +178,8 @@ resource "aws_iam_role" "cluster_autoscaler_irsa" {
 
 resource "aws_iam_policy" "cluster_autoscaler" {
 
-  name        = "${local.cluster_name}-cluster-autoscaler"
+  name        = local.cluster_autoscaler_policy_name
+  path        = "/${local.path_prefix}/"
   description = "IAM policy for Cluster Autoscaler to manage EKS node groups"
 
   policy = jsonencode({
@@ -227,7 +232,8 @@ resource "aws_iam_role_policy_attachment" "cluster_autoscaler" {
 # AWS Load Balancer Controller IAM Role (IRSA)
 # ------------------------------------------------------------------------------
 resource "aws_iam_role" "aws_load_balancer_controller" {
-  name = "${local.cluster_name}-aws-load-balancer-controller-irsa"
+  name = local.lb_controller_role_name
+  path = "/${local.path_prefix}/"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -251,7 +257,7 @@ resource "aws_iam_role" "aws_load_balancer_controller" {
   tags = merge(
     local.merged_tags,
     {
-      Name                           = "${local.cluster_name}-aws-load-balancer-controller-irsa"
+      Name                           = local.lb_controller_role_name
       "eks.amazonaws.com/component"  = "aws-load-balancer-controller"
       "app.kubernetes.io/managed-by" = "terraform"
     }

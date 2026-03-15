@@ -10,12 +10,20 @@ module "endpoint_security_group" {
 
   # Add service type to common_prefix to ensure unique SG names per VPC endpoint type
   common_prefix = "${var.common_prefix}-${local.service_short_name_sanitized}"
-  environment   = "shared"
-
-  firewall_tier = var.firewall_tier
-  firewall_type = var.firewall_type
   purpose       = local.service_short_name_sanitized
   ports         = [443]
+
+  ingress_rules = [
+    {
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = [data.aws_vpc.main.cidr_block]
+      description = "Allow HTTPS from VPC to ${local.service_short_name}"
+    }
+  ]
+
+  egress_rules = [] # VPC endpoints are unidirectional
 
   common_tags = var.common_tags
 }

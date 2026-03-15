@@ -5,15 +5,18 @@
 # Each environment (production, staging, development) has its own security group.
 # ==============================================================================
 
+data "aws_vpc" "main" {
+  id = var.vpc_id
+}
+
 module "security_group" {
-  count  = length(var.environments)
   source = "../../security/security-group"
 
   vpc_id = var.vpc_id
 
   # Use original common_prefix (no modification needed - environment handles uniqueness)
   common_prefix = var.common_prefix
-  purpose       = "ALB"
+  purpose       = "alb"
   ports         = [var.http_listener.port, var.https_listener.port]
 
   ingress_rules = [
@@ -35,11 +38,18 @@ module "security_group" {
 
   egress_rules = [
     {
-      from_port   = 0
-      to_port     = 65535
-      protocol    = "-1"
-      cidr_blocks = ["0.0.0.0/0"]
-      description = "Allow all outbound traffic to EKS pods"
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      cidr_blocks = [data.aws_vpc.main.cidr_block]
+      description = "Allow HTTP to EKS pods (IP target type)"
+    },
+    {
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = [data.aws_vpc.main.cidr_block]
+      description = "Allow HTTPS to EKS pods (IP target type)"
     }
   ]
 

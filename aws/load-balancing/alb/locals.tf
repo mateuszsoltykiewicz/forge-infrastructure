@@ -3,32 +3,40 @@
 # Purpose: Computed values and validation logic
 #
 
+# ==============================================================================
+# Data Sources
+# ==============================================================================
+
+data "aws_region" "current" {}
+
+data "aws_caller_identity" "current" {}
+
+# ==============================================================================
+# Local Values
+# ==============================================================================
+
 locals {
 
-  # Get current region from tags
-  current_region = var.common_tags["CurrentRegion"]
+  # Get current region from data source
+  current_region = data.aws_region.current.id
 
   # ========================================
-  # Multi-Tenant Naming Convention
+  # Naming Convention (Pattern A)
   # ========================================
+  # Note: common_prefix = "{customer}-{project}-{environment}"
+  # For path-like naming: replace "-" with "/"
+  # For ALB/resource names: use PascalCase (no hyphens)
 
-  # If var.environments is empty set environment to tag value "Workspace" else set to var.environments
-  environments = length(var.environments) > 0 ? var.environments : [var.common_tags["Workspace"]]
+  # Path-like prefix for resources (replace hyphens with slashes)
+  path_prefix = replace(var.common_prefix, "-", "/")
 
-  # Generate ALB names for each environment (max 32 characters):
-  # Pattern: {common_prefix}-{environment}-alb
-  # Example: san-cro-p-use1-production-alb
-  alb_names = [
-    for env in local.environments :
-    substr("alb-${env}-${var.common_prefix}", 0, 32)
-  ]
+  # PascalCase prefix for resource names (capitalize each word, remove hyphens)
+  pascal_prefix = join("", [for part in split("-", var.common_prefix) : title(part)])
 
-  # Target group name prefixes for each environment (max 25 characters)
-  tg_name_prefixes = [
-    for env in local.environments :
-    substr("tg-${env}-${var.common_prefix}", 0, 25)
-  ]
+  # ALB name (PascalCase, max 32 characters)
+  alb_name = substr("${local.pascal_prefix}Alb", 0, 32)
 
+<<<<<<< HEAD
   # Subdomain for each environment
   # production -> project-backend.com
   # staging -> staging.project-backend.com
@@ -36,6 +44,10 @@ locals {
     for env in local.environments :
     env == "Production" || env == "Shared" ? var.domain_name : "${env}.${var.domain_name}"
   ]
+=======
+  # Target group name prefixes (PascalCase, max 25 characters)
+  tg_name_prefixes = substr("${local.pascal_prefix}Tg", 0, 25)
+>>>>>>> b8c3fda (commit)
 
   # ========================================
   # Access Logs Configuration

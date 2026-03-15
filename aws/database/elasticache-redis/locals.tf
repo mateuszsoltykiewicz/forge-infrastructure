@@ -4,21 +4,40 @@
 # This file defines local values for resource naming, tagging, and configuration.
 # ==============================================================================
 
+# ==============================================================================
+# SECTION 1: Data Sources (Auto-Discovery)
+# ==============================================================================
+
+# Note: Data sources are defined in data.tf
+# - aws_region.current
+# - aws_caller_identity.current
+# - aws_partition.current
+# - aws_availability_zones.available
+# - aws_vpc.main
+
 locals {
   # ------------------------------------------------------------------------------
-  # Replication Group Naming (Multi-Tenant)
+  # Pattern A: Common Prefix Transformations
   # ------------------------------------------------------------------------------
 
-  # Multi-tenant cluster naming conventions:
-  # 1. Shared (platform): forge-{environment}-redis
-  # 2. Customer-dedicated: forge-{environment}-{customer}-redis
-  # 3. Project-isolated: forge-{environment}-{customer}-{project}-redis
-  replication_group_id = substr("redis-${var.common_prefix}", 0, 64)
+  # PascalCase prefix for resource names (e.g., "AcmeForgeDevDatabaseRedis")
+  pascal_prefix = join("", [for part in split("-", var.common_prefix) : title(part)])
 
-  sanitized_name_id = lower(replace(replace(local.replication_group_id, "/[^a-z0-9-]/", "-"), "/--+/", "-"))
+  # Path-like prefix for IAM roles (e.g., "/acme/forge/dev/database/")
+  path_prefix = "/${replace(var.common_prefix, "-", "/")}/"
 
-  # AWs region taken from tags
-  aws_region = lookup(var.common_tags, "Region", "unknown-region")
+  # ------------------------------------------------------------------------------
+  # Replication Group Naming
+  # ------------------------------------------------------------------------------
+
+  # Redis naming pattern: {PascalPrefix}Redis (e.g., "AcmeForgeDevDatabaseRedis")
+  redis_name = "${local.pascal_prefix}Redis"
+
+  # ElastiCache replication group ID: lowercase with hyphens, max 40 characters
+  # Prepend "redis-" to ensure uniqueness
+  replication_group_id = substr(lower(replace(replace("redis-${local.redis_name}", "/[^a-zA-Z0-9-]/", "-"), "/--+/", "-")), 0, 40)
+
+  sanitized_name_id = local.replication_group_id
 
   # ------------------------------------------------------------------------------
   # Resource Tags
@@ -52,10 +71,19 @@ locals {
   sanitized_subnet_group_name = substr("subnet-group-${local.replication_group_id}", 0, 64)
 
   # ----------------------------------------------------------------------------
-  # SSM parameters naming for redis. Build from common prefix
-  # Replace with regex to allign with path like naming conventions
+  # CloudWatch Resources (PascalCase)
   # ----------------------------------------------------------------------------
-  sanitized_ssm_name = lower(replace(replace(local.sanitized_name_id, "/[^a-z0-9._\\-\\/+=@ ]/", "-"), "/--+/", "-"))
+  dashboard_name             = "${local.pascal_prefix}RedisDashboard"
+  alarm_high_cpu             = "${local.pascal_prefix}RedisHighCpu"
+  alarm_high_memory          = "${local.pascal_prefix}RedisHighMemory"
+  alarm_high_evictions       = "${local.pascal_prefix}RedisHighEvictions"
+  alarm_high_replication_lag = "${local.pascal_prefix}RedisHighReplicationLag"
+  alarm_high_connections     = "${local.pascal_prefix}RedisHighConnections"
+
+  # ----------------------------------------------------------------------------
+  # SSM parameters prefix (path-like)
+  # ----------------------------------------------------------------------------
+  ssm_parameter_prefix = "${local.path_prefix}redis"
 
   # ------------------------------------------------------------------------------
   # Sanitized cloudwatch monitoring groups build from sanitized name id and converted as a path like structure

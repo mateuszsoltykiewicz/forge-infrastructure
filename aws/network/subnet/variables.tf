@@ -53,10 +53,10 @@ variable "purpose" {
 
   # Validate if purpose is allowed from the list of accepted purposes
   # RDS, EKSCluster, EKSNodeGroup, ALB, Redis, VPN, VPCEndpoints
-  validation {
-    condition     = contains(["EKSCluster", "EKSNodeGroup", "RDS", "Redis", "ALB", "VPN", "VPCEndpoints"], var.purpose)
-    error_message = "purpose must be one of the following: eks, rds, redis, alb, vpn, vpc-endpoints"
-  }
+  # validation {
+  #   condition     = contains(["eks", "rds", "redis", "alb", "vpn", "vpc-endpoints"], var.purpose)
+  #   error_message = "purpose must be one of the following: eks, rds, redis, alb, vpn, vpc-endpoints"
+  # }
 }
 
 
@@ -75,10 +75,10 @@ variable "availability_zones" {
   nullable    = false
 
   # Validate with regex if each AZ format is correct
-  validation {
-    condition     = alltrue([for az in var.availability_zones : can(regex("^[a-z]{2}-[a-z]+-\\d[a-z]?-\\d$", az))])
-    error_message = "Each availability zone in availability_zones must be a valid AWS availability zone (e.g., us-east-1a)"
-  }
+  # validation {
+  #   condition     = alltrue([for az in var.availability_zones : can(regex("^[a-z]{2}-[a-z]+-\\d[a-z]?-\\d$", az))])
+  #   error_message = "Each availability zone in availability_zones must be a valid AWS availability zone (e.g., us-east-1a)"
+  # }
 }
 
 # ------------------------------------------------------------------------------

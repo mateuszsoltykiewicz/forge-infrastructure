@@ -18,9 +18,8 @@ module "redis_subnets" {
   availability_zones = var.availability_zones
 
   # Tagging
-  common_prefix = var.common_prefix
-  purpose       = "Redis"
-  tier          = "Private"
+  common_prefix = local.pascal_prefix
+  purpose       = "redis"
 
   common_tags = local.merged_tags
 }

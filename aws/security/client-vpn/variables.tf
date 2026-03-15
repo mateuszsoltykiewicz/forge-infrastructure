@@ -239,3 +239,25 @@ variable "common_tags" {
   type        = map(string)
   default     = {}
 }
+
+# ------------------------------------------------------------------------------
+# HIPAA S3 Integration
+# ------------------------------------------------------------------------------
+
+variable "enable_hipaa_s3_export" {
+  description = "Enable export of VPN logs to HIPAA-compliant S3 bucket (7-year retention)"
+  type        = bool
+  default     = true
+}
+
+variable "kinesis_cloudwatch_stream_arn" {
+  description = "ARN of Kinesis Data Stream for CloudWatch logs aggregation (shared with RDS, EKS, Redis, VPC Flow Logs)"
+  type        = string
+  default     = null
+}
+
+variable "cloudwatch_to_kinesis_role_arn" {
+  description = "ARN of IAM role for CloudWatch Logs → Kinesis Data Stream subscription filter"
+  type        = string
+  default     = null
+}

@@ -4,11 +4,21 @@
 
 locals {
   # ------------------------------------------------------------------------------
-  # Naming (Pattern A)
+  # Pattern A: Common Prefix Transformations
   # ------------------------------------------------------------------------------
 
-  # WAF name: use provided name or generate from common_prefix
-  waf_name = var.name != null ? var.name : "${var.common_prefix}-waf"
+  # PascalCase prefix for resource names (e.g., "AcmeForgeDevSecurity")
+  pascal_prefix = join("", [for part in split("-", var.common_prefix) : title(part)])
+
+  # Path-like prefix (e.g., "/acme/forge/dev/security/")
+  path_prefix = "/${replace(var.common_prefix, "-", "/")}/"
+
+  # ------------------------------------------------------------------------------
+  # Naming (Pattern A - PascalCase)
+  # ------------------------------------------------------------------------------
+
+  # WAF name: use provided name or generate PascalCase from common_prefix
+  waf_name = var.name != null ? var.name : "${local.pascal_prefix}Waf"
 
   # ------------------------------------------------------------------------------
   # KMS Configuration

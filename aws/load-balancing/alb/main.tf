@@ -8,16 +8,15 @@
 # ========================================
 
 resource "aws_lb" "this" {
-  count = length(var.environments)
 
-  name               = local.alb_names[count.index]
+  name               = local.alb_name
   load_balancer_type = "application"
   internal           = false
   ip_address_type    = "ipv4"
 
   # Network configuration - shared subnets across all ALBs
   subnets         = module.alb_subnet.subnet_ids
-  security_groups = [module.security_group[count.index].security_group_id]
+  security_groups = [module.security_group.security_group_id]
 
   # ALB attributes
   enable_deletion_protection       = var.enable_deletion_protection
@@ -38,7 +37,7 @@ resource "aws_lb" "this" {
 
     content {
       bucket  = access_logs.value.bucket
-      prefix  = "${access_logs.value.prefix}/${var.environments[count.index]}"
+      prefix  = "${access_logs.value.prefix}/${var.common_prefix}"
       enabled = access_logs.value.enabled
     }
   }
@@ -46,9 +45,7 @@ resource "aws_lb" "this" {
   tags = merge(
     local.merged_tags,
     {
-      Name        = local.alb_names[count.index]
-      Environment = var.environments[count.index]
-      Subdomain   = local.subdomains[count.index]
+      Name = local.alb_name
     }
   )
 
@@ -63,9 +60,8 @@ resource "aws_lb" "this" {
 # ========================================
 
 resource "aws_wafv2_web_acl_association" "this" {
-  count = length(var.environments)
 
-  resource_arn = aws_lb.this[count.index].arn
+  resource_arn = aws_lb.this.arn
   web_acl_arn  = var.web_acl_arn
 
   depends_on = [
@@ -80,9 +76,8 @@ resource "aws_wafv2_web_acl_association" "this" {
 # ========================================
 
 resource "aws_lb_listener" "http" {
-  count = length(var.environments)
 
-  load_balancer_arn = aws_lb.this[count.index].arn
+  load_balancer_arn = aws_lb.this.arn
   port              = var.http_listener.port
   protocol          = "HTTP"
 
@@ -100,8 +95,7 @@ resource "aws_lb_listener" "http" {
   tags = merge(
     local.merged_tags,
     {
-      Name          = "${local.alb_names[count.index]}-http"
-      Environment   = var.environments[count.index]
+      Name          = "${local.alb_name}-http"
       Protocol      = "HTTP"
       DefaultAction = "RedirectToHTTPS"
       Port          = var.http_listener.port
@@ -114,9 +108,8 @@ resource "aws_lb_listener" "http" {
 # ========================================
 
 resource "aws_lb_listener" "https" {
-  count = length(var.environments)
 
-  load_balancer_arn = aws_lb.this[count.index].arn
+  load_balancer_arn = aws_lb.this.arn
   port              = var.https_listener.port
   protocol          = "HTTPS"
   ssl_policy        = var.https_listener.ssl_policy
@@ -136,8 +129,7 @@ resource "aws_lb_listener" "https" {
   tags = merge(
     local.merged_tags,
     {
-      Name          = "${local.alb_names[count.index]}-https"
-      Environment   = var.environments[count.index]
+      Name          = "${local.alb_name}-https"
       Protocol      = "HTTPS"
       Port          = var.https_listener.port
       SSLPolicy     = var.https_listener.ssl_policy

@@ -6,7 +6,18 @@
 
 locals {
 
-  igw_name = "${var.common_prefix}-igw"
+  # ------------------------------------------------------------------------------
+  # Pattern A: Common Prefix Transformations
+  # ------------------------------------------------------------------------------
+
+  # PascalCase prefix for resource names (e.g., "AcmeForgeDevNetworkIgw")
+  pascal_prefix = join("", [for part in split("-", var.common_prefix) : title(part)])
+
+  # Path-like prefix (e.g., "/acme/forge/dev/network/")
+  path_prefix = "/${replace(var.common_prefix, "-", "/")}/"
+
+  # IGW name (PascalCase)
+  igw_name = "${local.pascal_prefix}Igw"
 
   # Base tags (always applied)
   module_tags = {

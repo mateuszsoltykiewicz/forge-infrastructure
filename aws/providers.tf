@@ -11,17 +11,17 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.82"
+      version = "5.95.0" # Exact version required by EKS module 20.x (>= 5.95.0, < 6.0.0)
     }
 
     random = {
       source  = "hashicorp/random"
-      version = "~> 3.6.0"
+      version = "3.6.3"
     }
 
     local = {
       source  = "hashicorp/local"
-      version = "~> 2.5.0"
+      version = "2.5.3"
     }
   }
 }
@@ -30,8 +30,15 @@ terraform {
 # AWS Provider Configuration
 # ==============================================================================
 
+# Primary region provider
 provider "aws" {
   region = var.current_region
+}
+
+# Disaster Recovery region provider (for cross-region replication)
+provider "aws" {
+  alias  = "dr_region"
+  region = var.secondary_aws_region
 }
 
 # ==============================================================================
@@ -40,4 +47,5 @@ provider "aws" {
 # - Use specific provider versions to ensure reproducibility
 # - Configure default tags for all AWS resources
 # - Set region explicitly to avoid ambiguity
+# - DR provider enables cross-region S3 replication for HIPAA compliance
 # ==============================================================================

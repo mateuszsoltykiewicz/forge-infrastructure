@@ -49,7 +49,7 @@ resource "aws_cloudwatch_log_group" "upgrade" {
 # ------------------------------------------------------------------------------
 
 resource "aws_cloudwatch_dashboard" "rds" {
-  dashboard_name = "${local.db_identifier}-dashboard"
+  dashboard_name = local.dashboard_name
 
   dashboard_body = jsonencode({
     widgets = [
@@ -60,7 +60,7 @@ resource "aws_cloudwatch_dashboard" "rds" {
             ["AWS/RDS", "CPUUtilization", { stat = "Average", label = "CPU Average" }],
             ["...", { stat = "Maximum", label = "CPU Max" }]
           ]
-          period = 300
+          period = 60
           stat   = "Average"
           region = data.aws_region.current.id
           title  = "CPU Utilization"
@@ -78,7 +78,7 @@ resource "aws_cloudwatch_dashboard" "rds" {
           metrics = [
             ["AWS/RDS", "FreeableMemory", { stat = "Average" }]
           ]
-          period = 300
+          period = 60
           stat   = "Average"
           region = data.aws_region.current.id
           title  = "Freeable Memory"
@@ -88,9 +88,9 @@ resource "aws_cloudwatch_dashboard" "rds" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/RDS", "DatabaseConnections", { stat = "Average", label = "Connections" }]
+            ["AWS/RDS", "DatabaseConnections", { stat = "Average" }]
           ]
-          period = 300
+          period = 60
           stat   = "Average"
           region = data.aws_region.current.id
           title  = "Database Connections"
@@ -128,7 +128,7 @@ resource "aws_cloudwatch_dashboard" "rds" {
           metrics = [
             ["AWS/RDS", "FreeStorageSpace", { stat = "Average" }]
           ]
-          period = 300
+          period = 60
           stat   = "Average"
           region = data.aws_region.current.id
           title  = "Free Storage Space"
@@ -153,10 +153,10 @@ resource "aws_cloudwatch_dashboard" "rds" {
           metrics = [
             ["AWS/RDS", "ReplicaLag", { stat = "Average" }]
           ]
-          period = 300
+          period = 60
           stat   = "Average"
           region = data.aws_region.current.id
-          title  = "Replica Lag (Multi-AZ)"
+          title  = "Replica Lag"
         }
       }
     ]
@@ -169,7 +169,7 @@ resource "aws_cloudwatch_dashboard" "rds" {
 
 # High CPU alarm
 resource "aws_cloudwatch_metric_alarm" "high_cpu" {
-  alarm_name          = "${local.db_identifier}-high-cpu"
+  alarm_name          = local.alarm_high_cpu
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "CPUUtilization"
@@ -181,7 +181,7 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    DBInstanceIdentifier = local.db_identifier
+    DBInstanceIdentifier = local.db_identifier_clean
   }
 
   tags = local.merged_tags
@@ -189,7 +189,7 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
 
 # Low freeable memory alarm
 resource "aws_cloudwatch_metric_alarm" "low_memory" {
-  alarm_name          = "${local.db_identifier}-low-memory"
+  alarm_name          = local.alarm_low_memory
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = 2
   metric_name         = "FreeableMemory"
@@ -201,7 +201,7 @@ resource "aws_cloudwatch_metric_alarm" "low_memory" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    DBInstanceIdentifier = local.db_identifier
+    DBInstanceIdentifier = local.db_identifier_clean
   }
 
   tags = local.merged_tags
@@ -209,7 +209,7 @@ resource "aws_cloudwatch_metric_alarm" "low_memory" {
 
 # Low free storage alarm
 resource "aws_cloudwatch_metric_alarm" "low_storage" {
-  alarm_name          = "${local.db_identifier}-low-storage"
+  alarm_name          = local.alarm_low_storage
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = 1
   metric_name         = "FreeStorageSpace"
@@ -221,7 +221,7 @@ resource "aws_cloudwatch_metric_alarm" "low_storage" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    DBInstanceIdentifier = local.db_identifier
+    DBInstanceIdentifier = local.db_identifier_clean
   }
 
   tags = local.merged_tags
@@ -229,7 +229,7 @@ resource "aws_cloudwatch_metric_alarm" "low_storage" {
 
 # High database connections alarm
 resource "aws_cloudwatch_metric_alarm" "high_connections" {
-  alarm_name          = "${local.db_identifier}-high-connections"
+  alarm_name          = local.alarm_high_connections
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "DatabaseConnections"
@@ -241,7 +241,7 @@ resource "aws_cloudwatch_metric_alarm" "high_connections" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    DBInstanceIdentifier = local.db_identifier
+    DBInstanceIdentifier = local.db_identifier_clean
   }
 
   tags = local.merged_tags
@@ -249,7 +249,7 @@ resource "aws_cloudwatch_metric_alarm" "high_connections" {
 
 # High read latency alarm
 resource "aws_cloudwatch_metric_alarm" "high_read_latency" {
-  alarm_name          = "${local.db_identifier}-high-read-latency"
+  alarm_name          = local.alarm_high_read_latency
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "ReadLatency"
@@ -261,7 +261,7 @@ resource "aws_cloudwatch_metric_alarm" "high_read_latency" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    DBInstanceIdentifier = local.db_identifier
+    DBInstanceIdentifier = local.db_identifier_clean
   }
 
   tags = local.merged_tags
@@ -269,7 +269,7 @@ resource "aws_cloudwatch_metric_alarm" "high_read_latency" {
 
 # High write latency alarm
 resource "aws_cloudwatch_metric_alarm" "high_write_latency" {
-  alarm_name          = "${local.db_identifier}-high-write-latency"
+  alarm_name          = local.alarm_high_write_latency
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "WriteLatency"
@@ -281,7 +281,7 @@ resource "aws_cloudwatch_metric_alarm" "high_write_latency" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    DBInstanceIdentifier = local.db_identifier
+    DBInstanceIdentifier = local.db_identifier_clean
   }
 
   tags = local.merged_tags
@@ -290,7 +290,7 @@ resource "aws_cloudwatch_metric_alarm" "high_write_latency" {
 # Replica lag alarm (for Multi-AZ)
 resource "aws_cloudwatch_metric_alarm" "high_replica_lag" {
 
-  alarm_name          = "${local.db_identifier}-high-replica-lag"
+  alarm_name          = local.alarm_high_replica_lag
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "ReplicaLag"
@@ -302,7 +302,7 @@ resource "aws_cloudwatch_metric_alarm" "high_replica_lag" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    DBInstanceIdentifier = local.db_identifier
+    DBInstanceIdentifier = local.db_identifier_clean
   }
 
   tags = local.merged_tags

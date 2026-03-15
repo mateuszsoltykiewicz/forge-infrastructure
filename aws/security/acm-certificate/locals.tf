@@ -4,11 +4,21 @@
 
 locals {
   # ------------------------------------------------------------------------------
-  # Certificate Naming (Pattern A)
+  # Pattern A: Common Prefix Transformations
   # ------------------------------------------------------------------------------
 
-  # Certificate name using common_prefix
-  certificate_name = "${var.common_prefix}-cert"
+  # PascalCase prefix for resource names (e.g., "AcmeForgeDevSecurity")
+  pascal_prefix = join("", [for part in split("-", var.common_prefix) : title(part)])
+
+  # Path-like prefix (e.g., "/acme/forge/dev/security/")
+  path_prefix = "/${replace(var.common_prefix, "-", "/")}/"
+
+  # ------------------------------------------------------------------------------
+  # Certificate Naming (Pattern A - PascalCase)
+  # ------------------------------------------------------------------------------
+
+  # Certificate name using PascalCase pattern
+  certificate_name = "${local.pascal_prefix}Cert"
 
   # ------------------------------------------------------------------------------
   # Domain Configuration
